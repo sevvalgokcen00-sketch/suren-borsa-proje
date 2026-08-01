@@ -12,22 +12,23 @@ const PORT = 5000;
 // Express Güvenlik ve Dosya Okuma Ayarları
 app.use(cors());
 app.use(express.json());
-// Uploads klasörünü dışarıya açıyoruz (Resimlerin internet adresiyle görünmesi için)
+// Uploads klasörünü dışarıya açıyoruz
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // --------------------------------------------------------------------------
-// 🖼️ MULTER AYARLARI (Resim Yükleme Sistemi)
+// 🖼️ MULTER AYARLARI (Çoklu Resim Yükleme Sistemi)
 // --------------------------------------------------------------------------
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/'); // Resimler uploads/ klasörüne kaydolacak
+    cb(null, 'uploads/');
   },
   filename: (req, file, cb) => {
-    // Resim adının çakışmaması için başına tarih ekliyoruz
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
+
+// En fazla 5 adet resim yüklenmesine izin veriyoruz
 const upload = multer({ storage: storage });
 
 // --------------------------------------------------------------------------
@@ -41,13 +42,22 @@ async function initDb() {
     driver: sqlite3.Database
   });
 
-  // 1. Users Tablosu
+  // 1. Users Tablosu (Kurumsal & Bireysel Tüm Alanlar Eklendi)
   await db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      fullName TEXT NOT NULL,
+      userType TEXT DEFAULT 'kurumsal',
+      firstName TEXT NOT NULL,
+      lastName TEXT NOT NULL,
+      companyName TEXT,
+      taxOffice TEXT,
+      taxNumber TEXT,
       email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL
+      phone TEXT,
+      city TEXT,
+      district TEXT,
+      password TEXT NOT NULL,
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
@@ -59,7 +69,7 @@ async function initDb() {
     )
   `);
 
-  // 3. Listings Tablosu
+  // 3. Listings Tablosu (Sertifika ve Çoklu Görsel Alanı Eklendi)
   await db.exec(`
     CREATE TABLE IF NOT EXISTS listings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,20 +82,22 @@ async function initDb() {
       usageStatus TEXT,
       locationCity TEXT,
       locationDistrict TEXT,
-      imageUrl TEXT,
+      hasCertificate INTEGER DEFAULT 0,
+      imageUrls TEXT, 
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
-  // Varsayılan Kategorileri Ekle (Eğer tablo boşsa)
+  // Sizin Demir-Çelik Sistemine Uygun Kategorileri Ekle
   const categoryCount = await db.get('SELECT COUNT(*) as count FROM categories');
   if (categoryCount.count === 0) {
     await db.run(`INSERT INTO categories (name) VALUES 
-      ('Yüksek Fırın Cürufu'),
-      ('Çelikhane Cürufu'),
-      ('Tufal (Haddehane Atığı)'),
-      ('Baca Tozu'),
-      ('Döküm Kumu')`);
+      ('Yassı Mamuller'),
+      ('Uzun Mamuller'),
+      ('Boru & Kutu Profil'),
+      ('Paslanmaz Çelik'),
+      ('Hurda & Parça Sac'),
+      ('Vasıflı Çelikler')`);
   }
 
   console.log("🗄️ SQLite Veri Tabanı ve Tablolar Hazır!");
@@ -94,43 +106,45 @@ async function initDb() {
 initDb();
 
 // --------------------------------------------------------------------------
-// 🔑 AUTH ENDPOINT'LERİ (BCrypt Şifreleme İle)
+// 🔑 AUTH ENDPOINT'LERİ (Kayıt Ol ve Giriş Yap)
 // --------------------------------------------------------------------------
 
-// 1. KAYIT OL (Şifre Hash'leme Eklendi)
+// 1. KAYIT OL (Frontend Kayıt Formu İle Birebir Uyumlu)
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { fullName, email, password } = req.body;
+    const { 
+      userType, firstName, lastName, companyName, 
+      taxOffice, taxNumber, email, phone, city, district, password 
+    } = req.body;
 
-    if (!fullName || !email || !password) {
-      return res.status(400).json({ message: "Lütfen tüm alanları doldurun!" });
+    if (!firstName || !lastName || !email || !password) {
+      return res.status(400).json({ message: "Lütfen zorunlu alanları doldurun!" });
     }
 
-    // E-posta zaten var mı?
     const existingUser = await db.get('SELECT * FROM users WHERE email = ?', [email]);
     if (existingUser) {
       return res.status(400).json({ message: "Bu e-posta adresi zaten kayıtlı!" });
     }
 
-    // 🔒 BCrypt ile Şifreyi Gizleme (Hash)
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Veri Tabanına Kaydet
     const result = await db.run(
-      'INSERT INTO users (fullName, email, password) VALUES (?, ?, ?)',
-      [fullName, email, hashedPassword]
+      `INSERT INTO users 
+      (userType, firstName, lastName, companyName, taxOffice, taxNumber, email, phone, city, district, password) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [userType || 'kurumsal', firstName, lastName, companyName || null, taxOffice || null, taxNumber || null, email, phone || null, city || null, district || null, hashedPassword]
     );
 
     res.status(201).json({
       message: "Kayıt başarılı!",
-      user: { id: result.lastID, fullName, email }
+      user: { id: result.lastID, firstName, lastName, email }
     });
   } catch (error) {
     res.status(500).json({ message: "Sunucu hatası!", error: error.message });
   }
 });
 
-// 2. GİRİŞ YAP (BCrypt Şifre Kontrolü Eklendi)
+// 2. GİRİŞ YAP
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -140,7 +154,6 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ message: "E-posta veya şifre hatalı!" });
     }
 
-    // 🔒 Girilen şifre ile hash'lenmiş şifreyi karşılaştır
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json({ message: "E-posta veya şifre hatalı!" });
@@ -148,7 +161,13 @@ app.post('/api/auth/login', async (req, res) => {
 
     res.json({
       message: "Giriş başarılı!",
-      user: { id: user.id, fullName: user.fullName, email: user.email }
+      user: { 
+        id: user.id, 
+        firstName: user.firstName, 
+        lastName: user.lastName, 
+        email: user.email,
+        companyName: user.companyName 
+      }
     });
   } catch (error) {
     res.status(500).json({ message: "Sunucu hatası!" });
@@ -156,7 +175,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // --------------------------------------------------------------------------
-// 📦 İLAN VE KATEGORİ ENDPOINT'LERİ (SQLite & Multer İle)
+// 📦 İLAN VE KATEGORİ ENDPOINT'LERİ
 // --------------------------------------------------------------------------
 
 // Categories Listesi
@@ -182,43 +201,50 @@ app.get('/api/listings', async (req, res) => {
   }
 
   const listings = await db.all(query, params);
-  res.json(listings);
+  
+  // Resim URL'lerini JSON dizisine çevirip geri yolluyoruz
+  const formattedListings = listings.map(item => ({
+    ...item,
+    imageUrls: item.imageUrls ? JSON.parse(item.imageUrls) : []
+  }));
+
+  res.json(formattedListings);
 });
 
-// İlan Detayı
-app.get('/api/listings/:id', async (req, res) => {
-  const listing = await db.get('SELECT * FROM listings WHERE id = ?', [req.params.id]);
-  if (!listing) return res.status(404).json({ message: "İlan bulunamadı" });
-  res.json(listing);
-});
-
-// 3. İLAN EKLEME (Multer Resim Yükleme Destekli)
-// 'image' adıyla bir resim dosyası gelebilir (upload.single('image'))
-app.post('/api/listings', upload.single('image'), async (req, res) => {
+// 3. İLAN EKLEME (Çoklu Resim Desteği: upload.array('images', 5))
+app.post('/api/listings', upload.array('images', 5), async (req, res) => {
   try {
-    const { title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, categoryId } = req.body;
+    const { 
+      title, description, weight, unit, price, 
+      usageStatus, locationCity, locationDistrict, categoryId, hasCertificate 
+    } = req.body;
 
     if (!title || !price || !weight) {
-      return res.status(400).json({ message: "Başlık, fiyat ve kilo alanları zorunludur!" });
+      return res.status(400).json({ message: "Başlık, fiyat ve miktar alanları zorunludur!" });
     }
 
-    // Eğer resim yüklendiyse URL'ini ayarla, yüklenmediyse varsayılan gri resmi koy
-    let imageUrl = "https://via.placeholder.com/300";
-    if (req.file) {
-      imageUrl = `http://localhost:${PORT}/uploads/${req.file.filename}`;
+    // Yüklenen tüm resimlerin adreslerini diziye alıyoruz
+    let imageUrls = [];
+    if (req.files && req.files.length > 0) {
+      imageUrls = req.files.map(file => `http://localhost:${PORT}/uploads/${file.filename}`);
     }
 
     const result = await db.run(
       `INSERT INTO listings 
-      (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, imageUrl) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [categoryId || 1, title, description, weight, unit || 'kg', price, usageStatus, locationCity, locationDistrict, imageUrl]
+      (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, imageUrls) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        categoryId || 1, title, description || '', weight, unit || 'kg', 
+        price, usageStatus, locationCity, locationDistrict, 
+        hasCertificate === 'true' || hasCertificate === true ? 1 : 0, 
+        JSON.stringify(imageUrls)
+      ]
     );
 
     res.status(201).json({
       message: "İlan başarıyla oluşturuldu!",
       listingId: result.lastID,
-      imageUrl: imageUrl
+      imageUrls: imageUrls
     });
   } catch (error) {
     res.status(500).json({ message: "İlan eklenirken hata oluştu!", error: error.message });
