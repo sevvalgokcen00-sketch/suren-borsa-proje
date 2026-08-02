@@ -15,16 +15,36 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// DB Bağlantısı
+// DB Bağlantısı ve Otomatik Tablo Oluşturucu
 async function getDb() {
-  return open({
+  const db = await open({
     filename: './database.sqlite',
     driver: sqlite3.Database
   });
+
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS listings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      categoryId INTEGER,
+      title TEXT NOT NULL,
+      description TEXT,
+      weight REAL NOT NULL,
+      unit TEXT DEFAULT 'kg',
+      price REAL NOT NULL,
+      usageStatus TEXT,
+      locationCity TEXT,
+      locationDistrict TEXT,
+      hasCertificate INTEGER DEFAULT 0,
+      imageUrls TEXT, 
+      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  return db;
 }
 
 // --------------------------------------------------------------------------
-// 1. İLANLARI LİSTELEME VE FİLTRELEME
+// 1. TÜM İLANLARI LİSTELEME VE FİLTRELEME (GET /api/listings)
 // --------------------------------------------------------------------------
 router.get('/', async (req, res) => {
   try {
@@ -55,6 +75,8 @@ router.get('/', async (req, res) => {
     if (minWeight) { query += ' AND weight >= ?'; params.push(minWeight); }
     if (maxWeight) { query += ' AND weight <= ?'; params.push(maxWeight); }
 
+    query += ' ORDER BY createdAt DESC';
+
     const listings = await db.all(query, params);
 
     const formattedListings = listings.map(item => ({
@@ -69,7 +91,28 @@ router.get('/', async (req, res) => {
 });
 
 // --------------------------------------------------------------------------
-// 2. YENİ İLAN OLUŞTURMA
+// 2. TEK BİR İLANIN DETAYINI GETİRME (GET /api/listings/:id)
+// --------------------------------------------------------------------------
+router.get('/:id', async (req, res) => {
+  try {
+    const db = await getDb();
+    const listing = await db.get('SELECT * FROM listings WHERE id = ?', [req.params.id]);
+
+    if (!listing) {
+      return res.status(404).json({ message: "İlan bulunamadı!" });
+    }
+
+    res.json({
+      ...listing,
+      imageUrls: listing.imageUrls ? JSON.parse(listing.imageUrls) : []
+    });
+  } catch (error) {
+    res.status(500).json({ message: "İlan detayı alınırken hata oluştu!", error: error.message });
+  }
+});
+
+// --------------------------------------------------------------------------
+// 3. YENİ İLAN OLUŞTURMA (POST /api/listings)
 // --------------------------------------------------------------------------
 router.post('/', upload.array('images', 5), async (req, res) => {
   try {
@@ -107,6 +150,75 @@ router.post('/', upload.array('images', 5), async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: "İlan eklenirken hata oluştu!", error: error.message });
+  }
+});
+
+// --------------------------------------------------------------------------
+// 4. İLAN GÜNCELLEME (PUT /api/listings/:id)
+// --------------------------------------------------------------------------
+router.put('/:id', upload.array('images', 5), async (req, res) => {
+  try {
+    const db = await getDb();
+    const { id } = req.params;
+    const { 
+      title, description, weight, unit, price, 
+      usageStatus, locationCity, locationDistrict, categoryId, hasCertificate 
+    } = req.body;
+
+    const existingListing = await db.get('SELECT * FROM listings WHERE id = ?', [id]);
+    if (!existingListing) {
+      return res.status(404).json({ message: "Güncellenecek ilan bulunamadı!" });
+    }
+
+    let imageUrls = existingListing.imageUrls ? JSON.parse(existingListing.imageUrls) : [];
+    if (req.files && req.files.length > 0) {
+      imageUrls = req.files.map(file => `http://localhost:5000/uploads/${file.filename}`);
+    }
+
+    await db.run(
+      `UPDATE listings SET 
+        title = COALESCE(?, title),
+        description = COALESCE(?, description),
+        weight = COALESCE(?, weight),
+        unit = COALESCE(?, unit),
+        price = COALESCE(?, price),
+        usageStatus = COALESCE(?, usageStatus),
+        locationCity = COALESCE(?, locationCity),
+        locationDistrict = COALESCE(?, locationDistrict),
+        categoryId = COALESCE(?, categoryId),
+        hasCertificate = COALESCE(?, hasCertificate),
+        imageUrls = ?
+      WHERE id = ?`,
+      [
+        title, description, weight, unit, price, 
+        usageStatus, locationCity, locationDistrict, categoryId, 
+        hasCertificate !== undefined ? (hasCertificate === 'true' || hasCertificate === true ? 1 : 0) : null,
+        JSON.stringify(imageUrls),
+        id
+      ]
+    );
+
+    res.json({ message: "İlan başarıyla güncellendi!" });
+  } catch (error) {
+    res.status(500).json({ message: "İlan güncellenirken hata oluştu!", error: error.message });
+  }
+});
+
+// --------------------------------------------------------------------------
+// 5. İLAN SİLME (DELETE /api/listings/:id)
+// --------------------------------------------------------------------------
+router.delete('/:id', async (req, res) => {
+  try {
+    const db = await getDb();
+    const result = await db.run('DELETE FROM listings WHERE id = ?', [req.params.id]);
+
+    if (result.changes === 0) {
+      return res.status(404).json({ message: "Silinecek ilan bulunamadı!" });
+    }
+
+    res.json({ message: "İlan başarıyla silindi!" });
+  } catch (error) {
+    res.status(500).json({ message: "İlan silinirken hata oluştu!", error: error.message });
   }
 });
 
