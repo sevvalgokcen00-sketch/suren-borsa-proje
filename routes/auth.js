@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
+const authController = require('../controllers/authController');
 
-router.post('/register', (req, res) => {
-  res.json({ message: "Auth servisi hazırlanıyor..." });
-});
+// Kurumsal Kayıt
+router.post('/register', authController.register);
 
-router.post('/login', (req, res) => {
-  res.json({ message: "Auth servisi hazırlanıyor..." });
-});
+// Giriş Yap
+router.post('/login', authController.login);
+
+// Şifremi Unuttum
+router.post('/forgot-password', authController.forgotPassword);
 
 module.exports = router;
