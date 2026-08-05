@@ -4,6 +4,7 @@ const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs'); // Resimleri diskten silmek için eklendi
 
 // Multer (Resim Yükleme) Ayarları
 const storage = multer.diskStorage({
@@ -190,8 +191,15 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
         imageUrls = ?
       WHERE id = ?`,
       [
-        title, description, weight, unit, price, 
-        usageStatus, locationCity, locationDistrict, categoryId, 
+        title !== undefined ? title : null, 
+        description !== undefined ? description : null, 
+        weight !== undefined ? weight : null, 
+        unit !== undefined ? unit : null, 
+        price !== undefined ? price : null, 
+        usageStatus !== undefined ? usageStatus : null, 
+        locationCity !== undefined ? locationCity : null, 
+        locationDistrict !== undefined ? locationDistrict : null, 
+        categoryId !== undefined ? categoryId : null, 
         hasCertificate !== undefined ? (hasCertificate === 'true' || hasCertificate === true ? 1 : 0) : null,
         JSON.stringify(imageUrls),
         id
@@ -210,13 +218,33 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const db = await getDb();
-    const result = await db.run('DELETE FROM listings WHERE id = ?', [req.params.id]);
+    const { id } = req.params;
 
-    if (result.changes === 0) {
+    // 1. Önce silinecek ilanın verilerini çekelim (resimleri bulmak için)
+    const listing = await db.get('SELECT imageUrls FROM listings WHERE id = ?', [id]);
+
+    if (!listing) {
       return res.status(404).json({ message: "Silinecek ilan bulunamadı!" });
     }
 
-    res.json({ message: "İlan başarıyla silindi!" });
+    // 2. Klasördeki resim dosyalarını temizleyelim
+    if (listing.imageUrls) {
+      const urls = JSON.parse(listing.imageUrls);
+      urls.forEach(url => {
+        const filename = url.split('/uploads/')[1];
+        if (filename) {
+          const filePath = path.join(__dirname, '..', 'uploads', filename);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        }
+      });
+    }
+
+    // 3. İlanı veritabanından silelim
+    await db.run('DELETE FROM listings WHERE id = ?', [id]);
+
+    res.json({ message: "İlan ve bağlı tüm görseller başarıyla silindi!" });
   } catch (error) {
     res.status(500).json({ message: "İlan silinirken hata oluştu!", error: error.message });
   }
