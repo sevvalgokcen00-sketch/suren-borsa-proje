@@ -1,0 +1,123 @@
+const sqlite3 = require('sqlite3');
+const { open } = require('sqlite');
+
+async function seedData() {
+  try {
+    const db = await open({
+      filename: './database.sqlite',
+      driver: sqlite3.Database
+    });
+
+    // Excel (Ham_Veri) dosyanızdaki örnek 10 gerçek ilan verisi:
+    const initialListings = [
+      {
+        title: 'İmalat Artığı Profil - Gevşek',
+        description: 'Firma 1001 San. Tic. Ltd. Şti. tarafından sağlanan Yağlı-Kontamine nitelikte İmalat Artığı Profil.',
+        weight: 931.9,
+        unit: 'kg',
+        price: 13.58,
+        usageStatus: 'Yağlı-Kontamine',
+        locationCity: 'Gaziantep',
+        locationDistrict: 'Şehitkamil',
+        categoryId: 1
+      },
+      {
+        title: 'Ekstra Hurda - Preslenmiş Balya',
+        description: 'Firma 1001 San. Tic. Ltd. Şti. tarafından sağlanan Temiz nitelikte Ekstra Hurda.',
+        weight: 1100.6,
+        unit: 'kg',
+        price: 12.07,
+        usageStatus: 'Temiz',
+        locationCity: 'Gaziantep',
+        locationDistrict: 'Şahinbey',
+        categoryId: 1
+      },
+      {
+        title: 'Talaş / Kırpıntı - Preslenmiş Balya',
+        description: 'Firma 1002 San. Tic. Ltd. Şti. tarafından sağlanan Temiz nitelikte Talaş / Kırpıntı.',
+        weight: 176.1,
+        unit: 'kg',
+        price: 10.46,
+        usageStatus: 'Temiz',
+        locationCity: 'İstanbul',
+        locationDistrict: 'Ümraniye',
+        categoryId: 1
+      },
+      {
+        title: 'DKP Hurda - Parçalanmış',
+        description: 'Firma 1003 San. Tic. Ltd. Şti. tarafından sağlanan Temiz nitelikte DKP Hurda.',
+        weight: 1349.8,
+        unit: 'kg',
+        price: 14.26,
+        usageStatus: 'Temiz',
+        locationCity: 'İstanbul',
+        locationDistrict: 'Tuzla',
+        categoryId: 1
+      },
+      {
+        title: 'Talaş / Kırpıntı - Parçalanmış',
+        description: 'Firma 1003 San. Tic. Ltd. Şti. tarafından sağlanan Ağır Paslı nitelikte Talaş / Kırpıntı.',
+        weight: 1732.2,
+        unit: 'kg',
+        price: 8.82,
+        usageStatus: 'Ağır Paslı',
+        locationCity: 'İstanbul',
+        locationDistrict: 'Tuzla',
+        categoryId: 1
+      },
+      {
+        title: 'Mahalle (Karışık) - Gevşek',
+        description: 'Firma 1003 San. Tic. Ltd. Şti. tarafından sağlanan Yağlı-Kontamine nitelikte Karışık Hurda.',
+        weight: 1100.1,
+        unit: 'kg',
+        price: 8.30,
+        usageStatus: 'Yağlı-Kontamine',
+        locationCity: 'İstanbul',
+        locationDistrict: 'Esenyurt',
+        categoryId: 1
+      },
+      {
+        title: '1.Grup Hurda - Balya',
+        description: 'Firma 1005 San. Tic. Ltd. Şti. tarafından sağlanan Temiz nitelikte 1.Grup Hurda.',
+        weight: 999.1,
+        unit: 'kg',
+        price: 10.68,
+        usageStatus: 'Temiz',
+        locationCity: 'Kocaeli',
+        locationDistrict: 'Gebze',
+        categoryId: 1
+      }
+    ];
+
+    console.log("İlan verileri veritabanına aktarılıyor...");
+
+    const sampleImage = 'http://localhost:5000/uploads/sample-iron.jpg';
+
+    for (const item of initialListings) {
+      await db.run(
+        `INSERT INTO listings 
+        (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, imageUrls) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          item.categoryId,
+          item.title,
+          item.description,
+          item.weight,
+          item.unit,
+          item.price,
+          item.usageStatus,
+          item.locationCity,
+          item.locationDistrict,
+          1,
+          JSON.stringify([sampleImage])
+        ]
+      );
+    }
+
+    console.log("🎉 TÜM İLANLAR VERİTABANINA BAŞARIYLA YÜKLENDİ!");
+  } catch (error) {
+    console.error("Yükleme hatası:", error.message);
+  }
+}
+
+seedData();
