@@ -1,40 +1,50 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const { getDb } = require('./db'); // Veritabanı fonksiyonu bağlandı
+const fs = require('fs');
+const { getDb } = require('./db');
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.urlencoded({ extended: true }));
+
+// Uploads Klasör Kontrolü (Klasör yoksa otomatik oluşturur)
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+app.use('/uploads', express.static(uploadsDir));
 
 // Routes (İçe Aktarmalar)
 const authRoutes = require('./routes/auth');
+const profileRoutes = require('./routes/profile'); // EKLENDİ: Profil ve ayarlar rotası
 const listingRoutes = require('./routes/listings');
 const companyAnalysisRoutes = require('./routes/companyAnalysis');
 const dashboardRoutes = require('./routes/dashboard');
 const homeRoutes = require('./routes/home');
-const indicesRoutes = require('./routes/indices'); // YENİ: Endeks rotası
-const offersRoutes = require('./routes/offers');   // YENİ: Teklif rotası
+const indicesRoutes = require('./routes/indices');
+const offersRoutes = require('./routes/offers');
 
 // Routes (Tanımlamalar)
 app.use('/api/auth', authRoutes);
+app.use('/api/profile', profileRoutes); // EKLENDİ: /api/profile endpoint'i
 app.use('/api/listings', listingRoutes);
 app.use('/api/company-analysis', companyAnalysisRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/home', homeRoutes);
-app.use('/api/indices', indicesRoutes); // YENİ: /api/indices endpoint'i
-app.use('/api/offers', offersRoutes);   // YENİ: /api/offers endpoint'i
+app.use('/api/indices', indicesRoutes);
+app.use('/api/offers', offersRoutes);
 
-// Veritabanı tablolarını kontrol edip sunucuyu başlatma
+// Veritabanı kontrolü ve sunucuyu başlatma
 getDb().then(() => {
-  console.log('✅ Veritabanı ve yeni tablolar hazır.');
+  console.log('✅ Veritabanı ve tüm tablolar hazır.');
   app.listen(PORT, () => {
-    console.log(`✅ Sunucu modüler yapıda çalışıyor: http://localhost:${PORT}`);
+    console.log(`🚀 Sunucu modüler yapıda çalışıyor: http://localhost:${PORT}`);
   });
 }).catch((err) => {
   console.error('❌ Veritabanı başlatma hatası:', err);
-}); 
+});

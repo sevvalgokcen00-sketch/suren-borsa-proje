@@ -1,12 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs'); // Resimleri diskten silmek için eklendi
+const fs = require('fs');
+const { getDb } = require('../db'); // Ortak veritabanı modülü
 
-// Multer (Resim Yükleme) Ayarları
+// 1. Güvenli Multer Ayarları (5MB Limit + Format Filtresi)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
   filename: (req, file, cb) => {
@@ -14,35 +13,20 @@ const storage = multer.diskStorage({
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
-const upload = multer({ storage: storage });
 
-// DB Bağlantısı ve Otomatik Tablo Oluşturucu
-async function getDb() {
-  const db = await open({
-    filename: './database.sqlite',
-    driver: sqlite3.Database
-  });
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS listings (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      categoryId INTEGER,
-      title TEXT NOT NULL,
-      description TEXT,
-      weight REAL NOT NULL,
-      unit TEXT DEFAULT 'kg',
-      price REAL NOT NULL,
-      usageStatus TEXT,
-      locationCity TEXT,
-      locationDistrict TEXT,
-      hasCertificate INTEGER DEFAULT 0,
-      imageUrls TEXT, 
-      createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  return db;
-}
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // Maksimum 5MB
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|webp/;
+    const ext = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mime = allowedTypes.test(file.mimetype);
+    if (ext && mime) {
+      return cb(null, true);
+    }
+    cb(new Error("Sadece JPG, PNG ve WEBP formatındaki resimler yüklenebilir."));
+  }
+});
 
 // --------------------------------------------------------------------------
 // 1. TÜM İLANLARI LİSTELEME VE FİLTRELEME (GET /api/listings)
@@ -52,7 +36,8 @@ router.get('/', async (req, res) => {
     const db = await getDb();
     const { search, materialType, city, minPrice, maxPrice, minWeight, maxWeight } = req.query;
 
-    let query = 'SELECT * FROM listings WHERE 1=1';
+    // Sadece arşivlenmemiş (aktif) ilanları getir
+    let query = 'SELECT * FROM listings WHERE (is_archived = 0 OR is_archived IS NULL)';
     let params = [];
 
     if (search) {
@@ -98,32 +83,26 @@ router.get('/dashboard-stats', async (req, res) => {
   try {
     const db = await getDb();
     
-    // DB üzerindeki toplam ilan sayısını alalım
-    const totalCountResult = await db.get('SELECT COUNT(*) as count FROM listings');
+    const totalCountResult = await db.get('SELECT COUNT(*) as count FROM listings WHERE is_archived = 0 OR is_archived IS NULL');
     const totalCount = totalCountResult ? totalCountResult.count : 0;
 
     res.json({
       success: true,
       data: {
         kpi: {
-          totalListings: { value: totalCount || 3562, change: "+18.7%", period: "geçen aya göre" },
-          activeListings: { value: 2948, change: "+15.3%", period: "geçen aya göre" },
-          addedToday: { value: 128, change: "+9.2%", period: "düne göre" },
-          pendingOffers: { value: 246, change: "+12.1%", period: "geçen aya göre" }
+          totalListings: { value: totalCount, change: "+18.7%", period: "geçen aya göre" },
+          activeListings: { value: totalCount, change: "+15.3%", period: "geçen aya göre" },
+          addedToday: { value: 12, change: "+9.2%", period: "düne göre" },
+          pendingOffers: { value: 5, change: "+12.1%", period: "geçen aya göre" }
         },
         charts: {
           byCategory: [
-            { category: "Metal", count: 1400 },
-            { category: "Plastik", count: 950 },
-            { category: "Alüminyum", count: 650 },
-            { category: "Kağıt", count: 320 },
-            { category: "Diğer", count: 242 }
+            { category: "Metal", count: totalCount },
+            { category: "Plastik", count: 0 }
           ],
           byStatus: [
-            { status: "Aktif", count: 2948 },
-            { status: "Öne Çıkan", count: 356 },
-            { status: "Teklifte", count: 246 },
-            { status: "Pasif", count: 12 }
+            { status: "Aktif", count: totalCount },
+            { status: "Pasif", count: 0 }
           ]
         }
       }
@@ -139,7 +118,7 @@ router.get('/dashboard-stats', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const db = await getDb();
-    const listing = await db.get('SELECT * FROM listings WHERE id = ?', [req.params.id]);
+    const listing = await db.get('SELECT * FROM listings WHERE id = ? AND (is_archived = 0 OR is_archived IS NULL)', [req.params.id]);
 
     if (!listing) {
       return res.status(404).json({ message: "İlan bulunamadı!" });
@@ -155,7 +134,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // --------------------------------------------------------------------------
-// 4. YENİ İLAN OLUŞTURMA (POST /api/listings)
+// 4. YENİ İLAN OLUŞTURMA (POST /api/listings) - Validasyon Eklendi
 // --------------------------------------------------------------------------
 router.post('/', upload.array('images', 5), async (req, res) => {
   try {
@@ -165,8 +144,17 @@ router.post('/', upload.array('images', 5), async (req, res) => {
       usageStatus, locationCity, locationDistrict, categoryId, hasCertificate 
     } = req.body;
 
-    if (!title || !price || !weight) {
+    const numPrice = parseFloat(price);
+    const numWeight = parseFloat(weight);
+
+    // Zorunlu alan kontrolü
+    if (!title || isNaN(numPrice) || isNaN(numWeight)) {
       return res.status(400).json({ message: "Başlık, fiyat ve miktar alanları zorunludur!" });
+    }
+
+    // Negatif veya Sıfır Fiyat/Ağırlık Engeli
+    if (numPrice <= 0 || numWeight <= 0) {
+      return res.status(400).json({ message: "Fiyat ve miktar (ağırlık) 0'dan büyük olmalıdır!" });
     }
 
     let imageUrls = [];
@@ -176,11 +164,11 @@ router.post('/', upload.array('images', 5), async (req, res) => {
 
     const result = await db.run(
       `INSERT INTO listings 
-      (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, imageUrls) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, imageUrls, is_archived) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
       [
-        categoryId || 1, title, description || '', weight, unit || 'kg', 
-        price, usageStatus, locationCity, locationDistrict, 
+        categoryId || 1, title, description || '', numWeight, unit || 'kg', 
+        numPrice, usageStatus, locationCity, locationDistrict, 
         hasCertificate === 'true' || hasCertificate === true ? 1 : 0, 
         JSON.stringify(imageUrls)
       ]
@@ -197,7 +185,7 @@ router.post('/', upload.array('images', 5), async (req, res) => {
 });
 
 // --------------------------------------------------------------------------
-// 5. İLAN GÜNCELLEME (PUT /api/listings/:id)
+// 5. İLAN GÜNCELLEME (PUT /api/listings/:id) - Eski Görsel Temizliği & Validasyon
 // --------------------------------------------------------------------------
 router.put('/:id', upload.array('images', 5), async (req, res) => {
   try {
@@ -213,8 +201,27 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
       return res.status(404).json({ message: "Güncellenecek ilan bulunamadı!" });
     }
 
+    // Fiyat / Ağırlık Güncelleniyorsa Negatiflik Kontrolü
+    if (price !== undefined && parseFloat(price) <= 0) {
+      return res.status(400).json({ message: "Fiyat 0'dan büyük olmalıdır!" });
+    }
+    if (weight !== undefined && parseFloat(weight) <= 0) {
+      return res.status(400).json({ message: "Miktar 0'dan büyük olmalıdır!" });
+    }
+
     let imageUrls = existingListing.imageUrls ? JSON.parse(existingListing.imageUrls) : [];
+
+    // Yeni resim yüklendiyse eski resimleri diskten temizle
     if (req.files && req.files.length > 0) {
+      imageUrls.forEach(url => {
+        const filename = url.split('/uploads/')[1];
+        if (filename) {
+          const filePath = path.join(__dirname, '..', 'uploads', filename);
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        }
+      });
       imageUrls = req.files.map(file => `http://localhost:5000/uploads/${file.filename}`);
     }
 
@@ -235,9 +242,9 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
       [
         title !== undefined ? title : null, 
         description !== undefined ? description : null, 
-        weight !== undefined ? weight : null, 
+        weight !== undefined ? parseFloat(weight) : null, 
         unit !== undefined ? unit : null, 
-        price !== undefined ? price : null, 
+        price !== undefined ? parseFloat(price) : null, 
         usageStatus !== undefined ? usageStatus : null, 
         locationCity !== undefined ? locationCity : null, 
         locationDistrict !== undefined ? locationDistrict : null, 
@@ -255,40 +262,27 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
 });
 
 // --------------------------------------------------------------------------
-// 6. İLAN SİLME (DELETE /api/listings/:id)
+// 6. İLAN KALDIRMA (DELETE /api/listings/:id) - Soft Delete (Arşivleme)
 // --------------------------------------------------------------------------
 router.delete('/:id', async (req, res) => {
   try {
     const db = await getDb();
     const { id } = req.params;
 
-    // 1. Önce silinecek ilanın verilerini çekelim (resimleri bulmak için)
-    const listing = await db.get('SELECT imageUrls FROM listings WHERE id = ?', [id]);
-
+    const listing = await db.get('SELECT id FROM listings WHERE id = ?', [id]);
     if (!listing) {
-      return res.status(404).json({ message: "Silinecek ilan bulunamadı!" });
+      return res.status(404).json({ message: "Kaldırılacak ilan bulunamadı!" });
     }
 
-    // 2. Klasördeki resim dosyalarını temizleyelim
-    if (listing.imageUrls) {
-      const urls = JSON.parse(listing.imageUrls);
-      urls.forEach(url => {
-        const filename = url.split('/uploads/')[1];
-        if (filename) {
-          const filePath = path.join(__dirname, '..', 'uploads', filename);
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        }
-      });
-    }
+    // Veritabanından silmek yerine pasife alıp arşivliyoruz
+    await db.run(
+      'UPDATE listings SET is_archived = 1, usageStatus = "Pasif" WHERE id = ?',
+      [id]
+    );
 
-    // 3. İlanı veritabanından silelim
-    await db.run('DELETE FROM listings WHERE id = ?', [id]);
-
-    res.json({ message: "İlan ve bağlı tüm görseller başarıyla silindi!" });
+    res.json({ message: "İlan başarıyla kaldırıldı (arşivlendi)." });
   } catch (error) {
-    res.status(500).json({ message: "İlan silinirken hata oluştu!", error: error.message });
+    res.status(500).json({ message: "İlan kaldırılırken hata oluştu!", error: error.message });
   }
 });
 
