@@ -1,133 +1,90 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const { getDb } = require('../db');
 
-const users = [];
-
-// 1. KURUMSAL HESAP OLUŞTURMA
+// Kullanıcı Kaydı (Register)
 exports.register = async (req, res) => {
+  const { name, email, password, company_name } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: "Ad, e-posta ve şifre zorunludur." });
+  }
+
   try {
-    const { fullName, companyName, email, phone, password, termsAccepted } = req.body;
+    const db = await getDb();
 
-    if (!fullName || !companyName || !email || !phone || !password) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Lütfen tüm zorunlu alanları doldurun." 
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Şifreniz en az 6 karakter olmalıdır." 
-      });
-    }
-
-    if (!termsAccepted) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Lütfen Kullanım Koşulları ve Gizlilik Politikası'nı kabul edin." 
-      });
-    }
-
-    // Aynı e-posta adresiyle daha önce kayıt olunmuş mu?
-    const existingUser = users.find(u => u.email === email);
+    // E-posta kontrolü
+    const existingUser = await db.get(`SELECT id FROM users WHERE email = ?`, [email]);
     if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        message: "Bu e-posta adresi zaten kullanılmaktadır."
-      });
+      return res.status(400).json({ error: "Bu e-posta adresi zaten kayıtlı." });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = {
-      id: Date.now().toString(),
-      fullName,
-      companyName,
-      email,
-      phone,
-      password: hashedPassword,
-      createdAt: new Date()
-    };
-
-    users.push(newUser);
+    // Kullanıcıyı veritabanına ekle
+    const result = await db.run(
+      `INSERT INTO users (name, email, password, company_name) VALUES (?, ?, ?, ?)`,
+      [name, email, password, company_name || null]
+    );
 
     res.status(201).json({
       success: true,
-      message: "Kurumsal hesabınız başarıyla oluşturuldu.",
-      user: {
-        id: newUser.id,
-        fullName: newUser.fullName,
-        companyName: newUser.companyName,
-        email: newUser.email,
-        phone: newUser.phone
-      }
+      message: "Kullanıcı başarıyla kaydedildi.",
+      userId: result.lastID
     });
-
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Sunucu hatası", error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-// 2. KULLANICI GİRİŞİ
+// Kullanıcı Girişi (Login)
 exports.login = async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ error: "E-posta ve şifre zorunludur." });
+  }
+
   try {
-    const { email, password, rememberMe } = req.body;
+    const db = await getDb();
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, message: "E-posta ve şifre zorunludur." });
-    }
-
-    const user = users.find(u => u.email === email);
-    if (!user) {
-      return res.status(404).json({ success: false, message: "Bu e-posta adresiyle kayıtlı kullanıcı bulunamadı." });
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) {
-      return res.status(401).json({ success: false, message: "Hatalı şifre girdiniz." });
-    }
-
-    const expiresIn = rememberMe ? '7d' : '1d';
-
-    const token = jwt.sign(
-      { userId: user.id, email: user.email },
-      process.env.JWT_SECRET || 'gizli_anahtar_surenborsa',
-      { expiresIn }
+    // Kullanıcıyı sorgula
+    const user = await db.get(
+      `SELECT id, name, email, company_name, theme, notifications_enabled FROM users WHERE email = ? AND password = ?`,
+      [email, password]
     );
 
-    res.status(200).json({
-      success: true,
-      message: "Giriş başarılı!",
-      token,
-      user: {
-        id: user.id,
-        fullName: user.fullName,
-        companyName: user.companyName,
-        email: user.email
-      }
-    });
+    if (!user) {
+      return res.status(401).json({ error: "Geçersiz e-posta veya şifre." });
+    }
 
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Sunucu hatası", error: error.message });
+    res.json({
+      success: true,
+      message: "Giriş başarılı.",
+      user
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
-// 3. ŞİFREMİ UNUTTUM
+// Şifremi Unuttum (Forgot Password)
 exports.forgotPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
+  const { email } = req.body;
 
-    if (!email) {
-      return res.status(400).json({ success: false, message: "Lütfen e-posta adresinizi girin." });
+  if (!email) {
+    return res.status(400).json({ error: "E-posta adresi zorunludur." });
+  }
+
+  try {
+    const db = await getDb();
+    const user = await db.get(`SELECT id FROM users WHERE email = ?`, [email]);
+
+    if (!user) {
+      return res.status(404).json({ error: "Bu e-posta adresine ait kullanıcı bulunamadı." });
     }
 
-    res.status(200).json({
+    res.json({
       success: true,
       message: "Şifre sıfırlama bağlantısı e-posta adresinize gönderildi."
     });
-
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Sunucu hatası", error: error.message });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
