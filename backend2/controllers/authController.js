@@ -1,4 +1,8 @@
 const { getDb } = require('../db');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'suren-borsa-gizli-anahtar-2026';
 
 // Kullanıcı Kaydı (Register)
 exports.register = async (req, res) => {
@@ -17,10 +21,13 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: "Bu e-posta adresi zaten kayıtlı." });
     }
 
-    // Kullanıcıyı veritabanına ekle
+    // Şifreyi bcrypt ile hash'le
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Kullanıcıyı veritabanına hash'lenmiş şifre ile ekle
     const result = await db.run(
       `INSERT INTO users (name, email, password, company_name) VALUES (?, ?, ?, ?)`,
-      [name, email, password, company_name || null]
+      [name, email, hashedPassword, company_name || null]
     );
 
     res.status(201).json({
@@ -44,19 +51,36 @@ exports.login = async (req, res) => {
   try {
     const db = await getDb();
 
-    // Kullanıcıyı sorgula
+    // Kullanıcıyı e-posta ile sorgula
     const user = await db.get(
-      `SELECT id, name, email, company_name, theme, notifications_enabled FROM users WHERE email = ? AND password = ?`,
-      [email, password]
+      `SELECT id, name, email, password, company_name, theme, notifications_enabled FROM users WHERE email = ?`,
+      [email]
     );
 
     if (!user) {
       return res.status(401).json({ error: "Geçersiz e-posta veya şifre." });
     }
 
+    // Şifre kontrolü
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ error: "Geçersiz e-posta veya şifre." });
+    }
+
+    // JWT Token oluştur
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    // Yanıttan şifre alanını kaldır
+    delete user.password;
+
     res.json({
       success: true,
       message: "Giriş başarılı.",
+      token,
       user
     });
   } catch (err) {

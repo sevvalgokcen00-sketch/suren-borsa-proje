@@ -13,7 +13,7 @@ exports.getProfile = async (req, res) => {
     );
 
     if (!user) {
-      return res.status(404).json({ error: "Kullanıcı bulunamadı." });
+      return res.status(404).json({ success: false, error: "Kullanıcı bulunamadı." });
     }
 
     res.json(user);
@@ -22,14 +22,15 @@ exports.getProfile = async (req, res) => {
   }
 };
 
-// Profil Bilgilerini Güncelle
+// 1. MADDE ÇÖZÜMÜ: Profil Bilgilerini Güncelle
 exports.updateProfile = async (req, res) => {
   const { userId } = req.params;
   const { name, phone, company_name, tax_number } = req.body;
 
   try {
     const db = await getDb();
-    await db.run(
+
+    const result = await db.run(
       `UPDATE users 
        SET name = COALESCE(?, name), 
            phone = COALESCE(?, phone), 
@@ -39,26 +40,37 @@ exports.updateProfile = async (req, res) => {
       [name, phone, company_name, tax_number, userId]
     );
 
+    // Güncellenen satır yoksa (result.changes === 0) 404 döner
+    if (result.changes === 0) {
+      return res.status(404).json({ success: false, error: "Kullanıcı bulunamadı." });
+    }
+
     res.json({ success: true, message: "Profil bilgileri güncellendi." });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Tema ve Bildirim Ayarlarını Güncelle
+// 2. MADDE ÇÖZÜMÜ: Tema ve Bildirim Ayarlarını Güncelle
 exports.updateSettings = async (req, res) => {
   const { userId } = req.params;
   const { theme, notifications_enabled } = req.body;
 
   try {
     const db = await getDb();
-    await db.run(
+
+    const result = await db.run(
       `UPDATE users 
        SET theme = COALESCE(?, theme), 
            notifications_enabled = COALESCE(?, notifications_enabled) 
        WHERE id = ?`,
       [theme, notifications_enabled, userId]
     );
+
+    // Güncellenen satır yoksa (result.changes === 0) 404 döner
+    if (result.changes === 0) {
+      return res.status(404).json({ success: false, error: "Kullanıcı bulunamadı." });
+    }
 
     res.json({ success: true, message: "Ayarlar güncellendi." });
   } catch (err) {
