@@ -4,7 +4,8 @@ const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs'); // Resimleri diskten silmek için eklendi
+
+const PORT = process.env.PORT || 5001;
 
 // Multer (Resim Yükleme) Ayarları
 const storage = multer.diskStorage({
@@ -36,6 +37,7 @@ async function getDb() {
       locationCity TEXT,
       locationDistrict TEXT,
       hasCertificate INTEGER DEFAULT 0,
+      status TEXT DEFAULT 'Active',
       imageUrls TEXT, 
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -50,9 +52,10 @@ async function getDb() {
 router.get('/', async (req, res) => {
   try {
     const db = await getDb();
-    const { search, materialType, city, minPrice, maxPrice, minWeight, maxWeight } = req.query;
+    const { search, materialType, usageStatus, city, minPrice, maxPrice, minWeight, maxWeight } = req.query;
 
-    let query = 'SELECT * FROM listings WHERE 1=1';
+    // Sadece aktif ilanları çekiyoruz
+    let query = "SELECT * FROM listings WHERE status = 'Active'";
     let params = [];
 
     if (search) {
@@ -60,9 +63,11 @@ router.get('/', async (req, res) => {
       params.push(`%${search}%`, `%${search}%`);
     }
 
-    if (materialType) {
+    // Hem materialType hem usageStatus parametre desteği
+    const activeUsageStatus = usageStatus || materialType;
+    if (activeUsageStatus) {
       query += ' AND usageStatus = ?';
-      params.push(materialType);
+      params.push(activeUsageStatus);
     }
 
     if (city) {
@@ -76,7 +81,7 @@ router.get('/', async (req, res) => {
     if (minWeight) { query += ' AND weight >= ?'; params.push(minWeight); }
     if (maxWeight) { query += ' AND weight <= ?'; params.push(maxWeight); }
 
-    query += ' ORDER BY createdAt DESC';
+    query += ' ORDER BY createdAt DESC, id DESC';
 
     const listings = await db.all(query, params);
 
@@ -123,19 +128,32 @@ router.post('/', upload.array('images', 5), async (req, res) => {
       usageStatus, locationCity, locationDistrict, categoryId, hasCertificate 
     } = req.body;
 
+    // VALIDATION KONTROLLERİ
     if (!title || !price || !weight) {
       return res.status(400).json({ message: "Başlık, fiyat ve miktar alanları zorunludur!" });
     }
 
+    if (Number(price) <= 0) {
+      return res.status(400).json({ message: "Fiyat 0'dan büyük bir değer olmalıdır!" });
+    }
+
+    if (Number(weight) <= 0) {
+      return res.status(400).json({ message: "Miktar/Ağırlık 0'dan büyük bir değer olmalıdır!" });
+    }
+
+    if (!locationCity || !locationDistrict) {
+      return res.status(400).json({ message: "Lütfen geçerli bir şehir ve ilçe giriniz!" });
+    }
+
     let imageUrls = [];
     if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(file => `http://localhost:5000/uploads/${file.filename}`);
+      imageUrls = req.files.map(file => `http://localhost:${PORT}/uploads/${file.filename}`);
     }
 
     const result = await db.run(
       `INSERT INTO listings 
-      (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, imageUrls) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, status, imageUrls) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)`,
       [
         categoryId || 1, title, description || '', weight, unit || 'kg', 
         price, usageStatus, locationCity, locationDistrict, 
@@ -171,9 +189,18 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
       return res.status(404).json({ message: "Güncellenecek ilan bulunamadı!" });
     }
 
+    // VALIDATION KONTROLLERİ
+    if (price !== undefined && Number(price) <= 0) {
+      return res.status(400).json({ message: "Fiyat 0'dan büyük bir değer olmalıdır!" });
+    }
+
+    if (weight !== undefined && Number(weight) <= 0) {
+      return res.status(400).json({ message: "Miktar/Ağırlık 0'dan büyük bir değer olmalıdır!" });
+    }
+
     let imageUrls = existingListing.imageUrls ? JSON.parse(existingListing.imageUrls) : [];
     if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(file => `http://localhost:5000/uploads/${file.filename}`);
+      imageUrls = req.files.map(file => `http://localhost:${PORT}/uploads/${file.filename}`);
     }
 
     await db.run(
@@ -213,38 +240,23 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
 });
 
 // --------------------------------------------------------------------------
-// 5. İLAN SİLME (DELETE /api/listings/:id)
+// 5. İLAN SİLME / ARŞİVE ALMA (DELETE /api/listings/:id) - SOFT DELETE
 // --------------------------------------------------------------------------
 router.delete('/:id', async (req, res) => {
   try {
     const db = await getDb();
     const { id } = req.params;
 
-    // 1. Önce silinecek ilanın verilerini çekelim (resimleri bulmak için)
-    const listing = await db.get('SELECT imageUrls FROM listings WHERE id = ?', [id]);
-
+    const listing = await db.get('SELECT id FROM listings WHERE id = ?', [id]);
     if (!listing) {
       return res.status(404).json({ message: "Silinecek ilan bulunamadı!" });
     }
 
-    // 2. Klasördeki resim dosyalarını temizleyelim
-    if (listing.imageUrls) {
-      const urls = JSON.parse(listing.imageUrls);
-      urls.forEach(url => {
-        const filename = url.split('/uploads/')[1];
-        if (filename) {
-          const filePath = path.join(__dirname, '..', 'uploads', filename);
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        }
-      });
-    }
+    // İlan tamamen silinmeyip statüsü 'Archived' yapılır.
+    // Böylece geçmiş teklif kayıtlarında 'listingTitle: null' sorunu yaşanmaz.
+    await db.run("UPDATE listings SET status = 'Archived' WHERE id = ?", [id]);
 
-    // 3. İlanı veritabanından silelim
-    await db.run('DELETE FROM listings WHERE id = ?', [id]);
-
-    res.json({ message: "İlan ve bağlı tüm görseller başarıyla silindi!" });
+    res.json({ message: "İlan başarıyla arşive alındı, geçmiş teklifler korundu!" });
   } catch (error) {
     res.status(500).json({ message: "İlan silinirken hata oluştu!", error: error.message });
   }
