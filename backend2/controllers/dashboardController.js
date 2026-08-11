@@ -1,23 +1,23 @@
 const { getDb } = require('../db');
 
-// Gösterge Paneli Verilerini Getir (3. Madde Çözümü)
+// Gösterge Paneli Verilerini Getir
 exports.getDashboardData = async (req, res) => {
   try {
     const db = await getDb();
 
-    // 1. Toplam İşlem Hacmi (Fiyat * Miktar)
+    // 1. Toplam İşlem Hacmi (Fiyat * Ağırlık)
     const volumeResult = await db.get(
-      `SELECT COALESCE(SUM(price * quantity), 0) as totalVolume FROM listings`
+      `SELECT COALESCE(SUM(price * weight), 0) as totalVolume FROM listings`
     );
 
-    // 2. Toplam İşlenen / Geri Dönüştürülen Miktar (Ton)
+    // 2. Toplam İşlenen / Geri Dönüştürülen Ağırlık (Kg)
     const amountResult = await db.get(
-      `SELECT COALESCE(SUM(quantity), 0) as totalAmount FROM listings`
+      `SELECT COALESCE(SUM(weight), 0) as totalAmount FROM listings`
     );
 
-    // 3. Aktif İlan Sayısı
+    // 3. Aktif İlan Sayısı (DB varsayılanı: 'Aktif')
     const listingsResult = await db.get(
-      `SELECT COUNT(*) as activeCount FROM listings WHERE status = 'active'`
+      `SELECT COUNT(*) as activeCount FROM listings WHERE status = 'Aktif'`
     );
 
     // 4. Bekleyen Teklif Sayısı
@@ -25,7 +25,7 @@ exports.getDashboardData = async (req, res) => {
       `SELECT COUNT(*) as pendingCount FROM offers WHERE status = 'pending'`
     );
 
-    // 5. Aylık İşlem Hacmi Trendi (Dinamik SQLite Sorgusu)
+    // 5. Aylık İşlem Hacmi Trendi
     const monthlyTrend = await db.all(
       `SELECT 
         CASE strftime('%m', created_at)
@@ -42,7 +42,7 @@ exports.getDashboardData = async (req, res) => {
           WHEN '11' THEN 'Kasım'
           WHEN '12' THEN 'Aralık'
         END as month,
-        COALESCE(SUM(price * quantity) / 1000000, 0) as volume
+        COALESCE(SUM(price * weight) / 1000000, 0) as volume
        FROM listings
        WHERE created_at IS NOT NULL
        GROUP BY strftime('%m', created_at)
@@ -50,7 +50,8 @@ exports.getDashboardData = async (req, res) => {
     );
 
     const totalVolumeVal = volumeResult.totalVolume;
-    const totalAmountVal = amountResult.totalAmount;
+    const totalAmountVal = amountResult.totalAmount; // Kg cinsinden
+    const totalAmountTon = Math.round(totalAmountVal / 1000); // Kg -> Ton dönüşümü
     const activeListingsCount = listingsResult.activeCount;
     const pendingOffersCount = offersResult.pendingCount;
 
@@ -64,7 +65,7 @@ exports.getDashboardData = async (req, res) => {
         },
         recycledAmount: { 
           raw: totalAmountVal,
-          value: `${totalAmountVal.toLocaleString('tr-TR')} ton`
+          value: `${totalAmountTon.toLocaleString('tr-TR')} ton`
         },
         activeListings: { 
           raw: activeListingsCount,
@@ -77,8 +78,6 @@ exports.getDashboardData = async (req, res) => {
           note: "Yanıt bekliyor ⏳" 
         }
       },
-
-      // Veritabanında veri yoksa boş dizi döner, sabit mock veri kullanmaz
       trendChart: monthlyTrend
     };
 

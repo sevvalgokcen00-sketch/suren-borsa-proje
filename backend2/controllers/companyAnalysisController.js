@@ -1,6 +1,6 @@
 const { getDb } = require('../db');
 
-// Firma Merkezli Analiz Paneli Verilerini Getir (4. Madde Çözümü)
+// Firma Merkezli Analiz Paneli Verilerini Getir
 exports.getCompanyAnalysis = async (req, res) => {
   try {
     const db = await getDb();
@@ -10,13 +10,13 @@ exports.getCompanyAnalysis = async (req, res) => {
       `SELECT COUNT(DISTINCT company_name) as count FROM users WHERE company_name IS NOT NULL AND company_name != ''`
     );
     const activeListingsRes = await db.get(
-      `SELECT COUNT(*) as count FROM listings WHERE status = 'active'`
+      `SELECT COUNT(*) as count FROM listings WHERE status = 'Aktif'`
     );
     const totalVolumeRes = await db.get(
-      `SELECT COALESCE(SUM(price * quantity), 0) as total FROM listings`
+      `SELECT COALESCE(SUM(price * weight), 0) as total FROM listings`
     );
     const recycledMaterialRes = await db.get(
-      `SELECT COALESCE(SUM(quantity), 0) as total FROM listings`
+      `SELECT COALESCE(SUM(weight), 0) as total FROM listings`
     );
 
     // 2. Firma Performans Tablosu (Users + Listings JOIN)
@@ -24,10 +24,10 @@ exports.getCompanyAnalysis = async (req, res) => {
       `SELECT 
         u.id, 
         u.company_name as name, 
-        COALESCE(SUM(l.price * l.quantity), 0) as totalVolumeNum,
-        COALESCE(AVG(l.price * l.quantity), 0) as avgVolumeNum,
+        COALESCE(SUM(l.price * l.weight), 0) as totalVolumeNum,
+        COALESCE(AVG(l.price * l.weight), 0) as avgVolumeNum,
         COUNT(l.id) as totalTransactions,
-        MAX(l.category) as mainMaterial
+        MAX(l.material_type) as mainMaterial
        FROM users u
        LEFT JOIN listings l ON u.id = l.user_id
        WHERE u.company_name IS NOT NULL AND u.company_name != ''
@@ -73,13 +73,13 @@ exports.getCompanyAnalysis = async (req, res) => {
         : c.totalVolumeNum
     }));
 
-    // 5. Grafik 2: Malzeme Dağılımı (Kategori Bazlı)
+    // 5. Grafik 2: Malzeme Dağılımı (material_type Bazlı)
     const materialDistRes = await db.all(
       `SELECT 
-        COALESCE(category, 'Diğer') as name,
-        SUM(quantity) as weight
+        COALESCE(material_type, 'Diğer') as name,
+        SUM(weight) as weight
        FROM listings
-       GROUP BY category`
+       GROUP BY material_type`
     );
 
     const totalWeightSum = materialDistRes.reduce((acc, curr) => acc + curr.weight, 0) || 1;
@@ -92,8 +92,8 @@ exports.getCompanyAnalysis = async (req, res) => {
     }));
 
     const totalVol = totalVolumeRes.total;
+    const recycledTon = Math.round(recycledMaterialRes.total / 1000); // Kg -> Ton dönüşümü
 
-    // Sabit metinler kaldırılmış tamamen dinamik yanıt
     const analysisData = {
       kpi: {
         totalCompanies: { 
@@ -112,7 +112,7 @@ exports.getCompanyAnalysis = async (req, res) => {
         },
         recycledMaterial: { 
           raw: recycledMaterialRes.total,
-          value: `${recycledMaterialRes.total.toLocaleString('tr-TR')} ton`
+          value: `${recycledTon.toLocaleString('tr-TR')} ton`
         }
       },
       companies,
@@ -120,7 +120,7 @@ exports.getCompanyAnalysis = async (req, res) => {
       charts: {
         companyVolume: companyVolumeChart,
         materialDistribution: {
-          totalWeight: `${recycledMaterialRes.total.toLocaleString('tr-TR')} ton`,
+          totalWeight: `${recycledTon.toLocaleString('tr-TR')} ton`,
           items: materialDistributionItems
         }
       }
@@ -128,7 +128,7 @@ exports.getCompanyAnalysis = async (req, res) => {
 
     return res.status(200).json({ success: true, data: analysisData });
   } catch (error) {
-    console.error("Analiz verileri alınırken hata:", error);
+    console.error("Analiz verileri alınarken hata:", error);
     return res.status(500).json({ 
       success: false, 
       message: "Analiz verileri alınamadı.", 

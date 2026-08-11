@@ -12,6 +12,11 @@ exports.register = async (req, res) => {
     return res.status(400).json({ error: "Ad, e-posta ve şifre zorunludur." });
   }
 
+  // Minimum 6 karakter şifre kontrolü
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Şifre en az 6 karakter olmalıdır." });
+  }
+
   try {
     const db = await getDb();
 
