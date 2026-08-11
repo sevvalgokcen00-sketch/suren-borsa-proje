@@ -10,7 +10,7 @@ const bidsRouter = require('./routes/bids');
 const marketRouter = require('./routes/market');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Middleware
 app.use(cors());
@@ -23,7 +23,7 @@ app.use('/api/listings', listingRoutes);
 app.use('/api/bids', bidsRouter);
 app.use('/api/market', marketRouter);
 
-// Otomatik Veri Yükleyici (Seed)
+// Otomatik Veri Yükleyici (Seed) ve Tablo Onarıcı
 async function autoSeed() {
   try {
     const db = await open({
@@ -31,7 +31,7 @@ async function autoSeed() {
       driver: sqlite3.Database
     });
 
-    // Tablo yoksa oluştur
+    // 1. Tablo yoksa oluştur
     await db.exec(`
       CREATE TABLE IF NOT EXISTS listings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,12 +44,28 @@ async function autoSeed() {
         usageStatus TEXT,
         locationCity TEXT,
         locationDistrict TEXT,
-        hasCertificate INTEGER,
+        hasCertificate INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'Active',
         imageUrls TEXT,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
+    // 2. OTOMATİK MİGRATİON: Eski veritabanı dosyalarında eksik kolon varsa patlamasın diye otomatik ekler
+    const columns = await db.all("PRAGMA table_info(listings);");
+    const hasCertColumn = columns.some(col => col.name === 'hasCertificate');
+    const hasStatusColumn = columns.some(col => col.name === 'status');
+
+    if (!hasCertColumn) {
+      await db.run("ALTER TABLE listings ADD COLUMN hasCertificate INTEGER DEFAULT 0;");
+      console.log("🛠️ 'hasCertificate' kolonu tabloya otomatik eklendi.");
+    }
+    if (!hasStatusColumn) {
+      await db.run("ALTER TABLE listings ADD COLUMN status TEXT DEFAULT 'Active';");
+      console.log("🛠️ 'status' kolonu tabloya otomatik eklendi.");
+    }
+
+    // 3. Başlangıç Verilerini Yükle
     const count = await db.get('SELECT COUNT(*) as cnt FROM listings');
     if (count.cnt === 0) {
       console.log('⚡ Veritabanı boş, başlangıç ilanları ekleniyor...');
@@ -63,11 +79,11 @@ async function autoSeed() {
         { title: '1.Grup Hurda - Balya', description: 'Temiz nitelikte 1.Grup Hurda.', weight: 999.1, unit: 'kg', price: 10.68, usageStatus: 'Temiz', locationCity: 'Kocaeli', locationDistrict: 'Gebze' }
       ];
 
-      const sampleImage = 'http://localhost:5000/uploads/sample-iron.jpg';
+      const sampleImage = `http://localhost:${PORT}/uploads/sample-iron.jpg`;
       for (const item of initialListings) {
         await db.run(
-          `INSERT INTO listings (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, imageUrls) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [1, item.title, item.description, item.weight, item.unit, item.price, item.usageStatus, item.locationCity, item.locationDistrict, 1, JSON.stringify([sampleImage])]
+          `INSERT INTO listings (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, status, imageUrls) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [1, item.title, item.description, item.weight, item.unit, item.price, item.usageStatus, item.locationCity, item.locationDistrict, 1, 'Active', JSON.stringify([sampleImage])]
         );
       }
       console.log('🎉 Başlangıç ilanları veritabanına başarıyla yüklendi!');
@@ -79,5 +95,5 @@ async function autoSeed() {
 
 app.listen(PORT, async () => {
   await autoSeed();
-  console.log(`✅ Sunucu 5000 portunda başarıyla çalışıyor!`);
+  console.log(`✅ Sunucu ${PORT} portunda çalışıyor`);
 });
