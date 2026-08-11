@@ -51,7 +51,11 @@ exports.getDashboardData = async (req, res) => {
 
     const totalVolumeVal = volumeResult.totalVolume;
     const totalAmountVal = amountResult.totalAmount; // Kg cinsinden
-    const totalAmountTon = Math.round(totalAmountVal / 1000); // Kg -> Ton dönüşümü
+    
+    // Kg -> Ton dönüşümü (500 kg -> "0,5 ton" gösterimi)
+    const totalAmountTonVal = totalAmountVal / 1000;
+    const totalAmountTonStr = totalAmountTonVal.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
+
     const activeListingsCount = listingsResult.activeCount;
     const pendingOffersCount = offersResult.pendingCount;
 
@@ -65,7 +69,7 @@ exports.getDashboardData = async (req, res) => {
         },
         recycledAmount: { 
           raw: totalAmountVal,
-          value: `${totalAmountTon.toLocaleString('tr-TR')} ton`
+          value: `${totalAmountTonStr} ton`
         },
         activeListings: { 
           raw: activeListingsCount,

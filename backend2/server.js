@@ -12,6 +12,12 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Türkçe Karakter (UTF-8) Yanıt Zorlaması
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
+
 // Uploads Klasör Kontrolü (Klasör yoksa otomatik oluşturur)
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
@@ -21,7 +27,7 @@ app.use('/uploads', express.static(uploadsDir));
 
 // Routes (İçe Aktarmalar)
 const authRoutes = require('./routes/auth');
-const profileRoutes = require('./routes/profile'); // EKLENDİ: Profil ve ayarlar rotası
+const profileRoutes = require('./routes/profile');
 const listingRoutes = require('./routes/listings');
 const companyAnalysisRoutes = require('./routes/companyAnalysis');
 const dashboardRoutes = require('./routes/dashboard');
@@ -31,7 +37,7 @@ const offersRoutes = require('./routes/offers');
 
 // Routes (Tanımlamalar)
 app.use('/api/auth', authRoutes);
-app.use('/api/profile', profileRoutes); // EKLENDİ: /api/profile endpoint'i
+app.use('/api/profile', profileRoutes);
 app.use('/api/listings', listingRoutes);
 app.use('/api/company-analysis', companyAnalysisRoutes);
 app.use('/api/dashboard', dashboardRoutes);

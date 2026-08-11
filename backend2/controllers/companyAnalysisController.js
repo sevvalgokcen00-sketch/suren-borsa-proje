@@ -92,7 +92,10 @@ exports.getCompanyAnalysis = async (req, res) => {
     }));
 
     const totalVol = totalVolumeRes.total;
-    const recycledTon = Math.round(recycledMaterialRes.total / 1000); // Kg -> Ton dönüşümü
+    
+    // Kg -> Ton dönüşümü (Math.round yerine küsürat koruması: 500 kg = 0,5 ton)
+    const recycledTonVal = recycledMaterialRes.total / 1000;
+    const recycledTonStr = recycledTonVal.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
 
     const analysisData = {
       kpi: {
@@ -112,7 +115,7 @@ exports.getCompanyAnalysis = async (req, res) => {
         },
         recycledMaterial: { 
           raw: recycledMaterialRes.total,
-          value: `${recycledTon.toLocaleString('tr-TR')} ton`
+          value: `${recycledTonStr} ton`
         }
       },
       companies,
@@ -120,7 +123,7 @@ exports.getCompanyAnalysis = async (req, res) => {
       charts: {
         companyVolume: companyVolumeChart,
         materialDistribution: {
-          totalWeight: `${recycledTon.toLocaleString('tr-TR')} ton`,
+          totalWeight: `${recycledTonStr} ton`,
           items: materialDistributionItems
         }
       }
