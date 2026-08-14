@@ -5,8 +5,6 @@ const { open } = require('sqlite');
 const multer = require('multer');
 const path = require('path');
 
-const PORT = process.env.PORT || 5001;
-
 // Multer (Resim Yükleme) Ayarları
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
@@ -27,7 +25,10 @@ async function getDb() {
   await db.exec(`
     CREATE TABLE IF NOT EXISTS listings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER DEFAULT 1,
+      companyName TEXT DEFAULT 'Referans Demir Çelik A.Ş.',
       categoryId INTEGER,
+      materialType TEXT,
       title TEXT NOT NULL,
       description TEXT,
       weight REAL NOT NULL,
@@ -38,7 +39,11 @@ async function getDb() {
       locationDistrict TEXT,
       hasCertificate INTEGER DEFAULT 0,
       status TEXT DEFAULT 'Active',
-      imageUrls TEXT, 
+      imageUrls TEXT DEFAULT '[]',
+      qualityStandard TEXT,
+      deliveryType TEXT,
+      wallThickness TEXT,
+      chemicalAnalysis TEXT,
       createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
@@ -52,22 +57,41 @@ async function getDb() {
 router.get('/', async (req, res) => {
   try {
     const db = await getDb();
-    const { search, materialType, usageStatus, city, minPrice, maxPrice, minWeight, maxWeight } = req.query;
+    const { 
+      search, materialType, usageStatus, city, 
+      minPrice, maxPrice, minWeight, maxWeight, 
+      userId, categoryId, sort 
+    } = req.query;
 
     // Sadece aktif ilanları çekiyoruz
     let query = "SELECT * FROM listings WHERE status = 'Active'";
     let params = [];
 
-    if (search) {
-      query += ' AND (title LIKE ? OR description LIKE ?)';
-      params.push(`%${search}%`, `%${search}%`);
+    // Kullanıcıya göre filtre (Benim İlanlarım)
+    if (userId) {
+      query += ' AND userId = ?';
+      params.push(Number(userId));
     }
 
-    // Hem materialType hem usageStatus parametre desteği
-    const activeUsageStatus = usageStatus || materialType;
-    if (activeUsageStatus) {
+    if (search) {
+      query += ' AND (title LIKE ? OR description LIKE ? OR companyName LIKE ?)';
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    // Malzeme Türü ve Kullanım Durumu bağımsız filtrelenir
+    if (materialType) {
+      query += ' AND materialType = ?';
+      params.push(materialType);
+    }
+
+    if (usageStatus) {
       query += ' AND usageStatus = ?';
-      params.push(activeUsageStatus);
+      params.push(usageStatus);
+    }
+
+    if (categoryId) {
+      query += ' AND categoryId = ?';
+      params.push(Number(categoryId));
     }
 
     if (city) {
@@ -75,13 +99,28 @@ router.get('/', async (req, res) => {
       params.push(city);
     }
 
-    if (minPrice) { query += ' AND price >= ?'; params.push(minPrice); }
-    if (maxPrice) { query += ' AND price <= ?'; params.push(maxPrice); }
+    if (minPrice) { query += ' AND price >= ?'; params.push(Number(minPrice)); }
+    if (maxPrice) { query += ' AND price <= ?'; params.push(Number(maxPrice)); }
 
-    if (minWeight) { query += ' AND weight >= ?'; params.push(minWeight); }
-    if (maxWeight) { query += ' AND weight <= ?'; params.push(maxWeight); }
+    if (minWeight) { query += ' AND weight >= ?'; params.push(Number(minWeight)); }
+    if (maxWeight) { query += ' AND weight <= ?'; params.push(Number(maxWeight)); }
 
-    query += ' ORDER BY createdAt DESC, id DESC';
+    // Sıralama Desteği
+    switch (sort) {
+      case 'oldest':
+        query += ' ORDER BY id ASC';
+        break;
+      case 'priceAsc':
+        query += ' ORDER BY price ASC';
+        break;
+      case 'priceDesc':
+        query += ' ORDER BY price DESC';
+        break;
+      case 'newest':
+      default:
+        query += ' ORDER BY createdAt DESC, id DESC';
+        break;
+    }
 
     const listings = await db.all(query, params);
 
@@ -124,8 +163,9 @@ router.post('/', upload.array('images', 5), async (req, res) => {
   try {
     const db = await getDb();
     const { 
-      title, description, weight, unit, price, 
-      usageStatus, locationCity, locationDistrict, categoryId, hasCertificate 
+      userId, companyName, categoryId, materialType, title, description, 
+      weight, unit, price, usageStatus, locationCity, locationDistrict, 
+      hasCertificate, qualityStandard, deliveryType, wallThickness, chemicalAnalysis 
     } = req.body;
 
     // VALIDATION KONTROLLERİ
@@ -145,20 +185,35 @@ router.post('/', upload.array('images', 5), async (req, res) => {
       return res.status(400).json({ message: "Lütfen geçerli bir şehir ve ilçe giriniz!" });
     }
 
+    // Deploy uyumlu relative URL formatı
     let imageUrls = [];
     if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(file => `http://localhost:${PORT}/uploads/${file.filename}`);
+      imageUrls = req.files.map(file => `/uploads/${file.filename}`);
     }
 
     const result = await db.run(
       `INSERT INTO listings 
-      (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, status, imageUrls) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)`,
+      (userId, companyName, categoryId, materialType, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, status, imageUrls, qualityStandard, deliveryType, wallThickness, chemicalAnalysis) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?, ?, ?)`,
       [
-        categoryId || 1, title, description || '', weight, unit || 'kg', 
-        price, usageStatus, locationCity, locationDistrict, 
+        userId ? Number(userId) : 1,
+        companyName || 'Referans Demir Çelik A.Ş.',
+        categoryId ? Number(categoryId) : 1,
+        materialType || '',
+        title, 
+        description || '', 
+        Number(weight), 
+        unit || 'kg', 
+        Number(price), 
+        usageStatus || '', 
+        locationCity, 
+        locationDistrict, 
         hasCertificate === 'true' || hasCertificate === true ? 1 : 0, 
-        JSON.stringify(imageUrls)
+        JSON.stringify(imageUrls),
+        qualityStandard || '',
+        deliveryType || '',
+        wallThickness || '',
+        chemicalAnalysis || ''
       ]
     );
 
@@ -180,13 +235,20 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
     const db = await getDb();
     const { id } = req.params;
     const { 
-      title, description, weight, unit, price, 
-      usageStatus, locationCity, locationDistrict, categoryId, hasCertificate 
+      userId, title, description, weight, unit, price, 
+      usageStatus, materialType, locationCity, locationDistrict, 
+      categoryId, hasCertificate, qualityStandard, deliveryType, 
+      wallThickness, chemicalAnalysis 
     } = req.body;
 
     const existingListing = await db.get('SELECT * FROM listings WHERE id = ?', [id]);
     if (!existingListing) {
       return res.status(404).json({ message: "Güncellenecek ilan bulunamadı!" });
+    }
+
+    // Yetkilendirme / Sahiplik Kontrolü
+    if (userId && Number(existingListing.userId) !== Number(userId)) {
+      return res.status(403).json({ message: "Bu ilanı güncelleme yetkiniz yok!" });
     }
 
     // VALIDATION KONTROLLERİ
@@ -200,7 +262,7 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
 
     let imageUrls = existingListing.imageUrls ? JSON.parse(existingListing.imageUrls) : [];
     if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(file => `http://localhost:${PORT}/uploads/${file.filename}`);
+      imageUrls = req.files.map(file => `/uploads/${file.filename}`);
     }
 
     await db.run(
@@ -211,23 +273,33 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
         unit = COALESCE(?, unit),
         price = COALESCE(?, price),
         usageStatus = COALESCE(?, usageStatus),
+        materialType = COALESCE(?, materialType),
         locationCity = COALESCE(?, locationCity),
         locationDistrict = COALESCE(?, locationDistrict),
         categoryId = COALESCE(?, categoryId),
         hasCertificate = COALESCE(?, hasCertificate),
+        qualityStandard = COALESCE(?, qualityStandard),
+        deliveryType = COALESCE(?, deliveryType),
+        wallThickness = COALESCE(?, wallThickness),
+        chemicalAnalysis = COALESCE(?, chemicalAnalysis),
         imageUrls = ?
       WHERE id = ?`,
       [
         title !== undefined ? title : null, 
         description !== undefined ? description : null, 
-        weight !== undefined ? weight : null, 
+        weight !== undefined ? Number(weight) : null, 
         unit !== undefined ? unit : null, 
-        price !== undefined ? price : null, 
+        price !== undefined ? Number(price) : null, 
         usageStatus !== undefined ? usageStatus : null, 
+        materialType !== undefined ? materialType : null,
         locationCity !== undefined ? locationCity : null, 
         locationDistrict !== undefined ? locationDistrict : null, 
-        categoryId !== undefined ? categoryId : null, 
+        categoryId !== undefined ? Number(categoryId) : null, 
         hasCertificate !== undefined ? (hasCertificate === 'true' || hasCertificate === true ? 1 : 0) : null,
+        qualityStandard !== undefined ? qualityStandard : null,
+        deliveryType !== undefined ? deliveryType : null,
+        wallThickness !== undefined ? wallThickness : null,
+        chemicalAnalysis !== undefined ? chemicalAnalysis : null,
         JSON.stringify(imageUrls),
         id
       ]
@@ -246,14 +318,19 @@ router.delete('/:id', async (req, res) => {
   try {
     const db = await getDb();
     const { id } = req.params;
+    const { userId } = req.body || {};
 
-    const listing = await db.get('SELECT id FROM listings WHERE id = ?', [id]);
+    const listing = await db.get('SELECT id, userId FROM listings WHERE id = ?', [id]);
     if (!listing) {
       return res.status(404).json({ message: "Silinecek ilan bulunamadı!" });
     }
 
+    // Yetkilendirme / Sahiplik Kontrolü
+    if (userId && Number(listing.userId) !== Number(userId)) {
+      return res.status(403).json({ message: "Bu ilanı silme yetkiniz yok!" });
+    }
+
     // İlan tamamen silinmeyip statüsü 'Archived' yapılır.
-    // Böylece geçmiş teklif kayıtlarında 'listingTitle: null' sorunu yaşanmaz.
     await db.run("UPDATE listings SET status = 'Archived' WHERE id = ?", [id]);
 
     res.json({ message: "İlan başarıyla arşive alındı, geçmiş teklifler korundu!" });
