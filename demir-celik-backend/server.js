@@ -46,23 +46,26 @@ async function autoSeed() {
         locationDistrict TEXT,
         hasCertificate INTEGER DEFAULT 0,
         status TEXT DEFAULT 'Active',
-        imageUrls TEXT,
+        imageUrls TEXT DEFAULT '[]',
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // 2. OTOMATİK MİGRATİON: Eski veritabanı dosyalarında eksik kolon varsa patlamasın diye otomatik ekler
+    // 2. OTOMATİK MİGRATİON: Eksik olan kolonları kontrol edip otomatik ekler
     const columns = await db.all("PRAGMA table_info(listings);");
-    const hasCertColumn = columns.some(col => col.name === 'hasCertificate');
-    const hasStatusColumn = columns.some(col => col.name === 'status');
+    const existingCols = columns.map(col => col.name);
 
-    if (!hasCertColumn) {
+    if (!existingCols.includes('hasCertificate')) {
       await db.run("ALTER TABLE listings ADD COLUMN hasCertificate INTEGER DEFAULT 0;");
-      console.log("🛠️ 'hasCertificate' kolonu tabloya otomatik eklendi.");
+      console.log("🛠️ 'hasCertificate' kolonu tabloya eklendi.");
     }
-    if (!hasStatusColumn) {
+    if (!existingCols.includes('status')) {
       await db.run("ALTER TABLE listings ADD COLUMN status TEXT DEFAULT 'Active';");
-      console.log("🛠️ 'status' kolonu tabloya otomatik eklendi.");
+      console.log("🛠️ 'status' kolonu tabloya eklendi.");
+    }
+    if (!existingCols.includes('imageUrls')) {
+      await db.run("ALTER TABLE listings ADD COLUMN imageUrls TEXT DEFAULT '[]';");
+      console.log("🛠️ 'imageUrls' kolonu tabloya eklendi.");
     }
 
     // 3. Başlangıç Verilerini Yükle
@@ -79,11 +82,10 @@ async function autoSeed() {
         { title: '1.Grup Hurda - Balya', description: 'Temiz nitelikte 1.Grup Hurda.', weight: 999.1, unit: 'kg', price: 10.68, usageStatus: 'Temiz', locationCity: 'Kocaeli', locationDistrict: 'Gebze' }
       ];
 
-      const sampleImage = `http://localhost:${PORT}/uploads/sample-iron.jpg`;
       for (const item of initialListings) {
         await db.run(
           `INSERT INTO listings (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, status, imageUrls) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [1, item.title, item.description, item.weight, item.unit, item.price, item.usageStatus, item.locationCity, item.locationDistrict, 1, 'Active', JSON.stringify([sampleImage])]
+          [1, item.title, item.description, item.weight, item.unit, item.price, item.usageStatus, item.locationCity, item.locationDistrict, 1, 'Active', '[]']
         );
       }
       console.log('🎉 Başlangıç ilanları veritabanına başarıyla yüklendi!');
