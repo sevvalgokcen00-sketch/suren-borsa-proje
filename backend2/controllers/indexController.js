@@ -50,9 +50,9 @@ exports.calculateReference = async (req, res) => {
   const rustRatio = parseFloat(pas);
   const moistureRatio = parseFloat(nem);
   const basePrice = parseFloat(user_price);
-  const totalWeight = weight ? parseFloat(weight) : 1;
+  const totalWeight = weight !== undefined && weight !== null ? parseFloat(weight) : 1;
 
-  // Güvenlik 2: Pas ve Nem mantık sınırı (%0 ile %100 arası olmalı)
+  // Güvenlik 2: Pas ve Nem tekil mantık sınırı (%0 ile %100 arası olmalı)
   if (isNaN(rustRatio) || rustRatio < 0 || rustRatio > 100) {
     return res.status(400).json({ error: "Pas oranı %0 ile %100 arasında bir sayı olmalıdır." });
   }
@@ -61,9 +61,19 @@ exports.calculateReference = async (req, res) => {
     return res.status(400).json({ error: "Nem oranı %0 ile %100 arasında bir sayı olmalıdır." });
   }
 
-  // Güvenlik 3: Fiyat sıfır veya negatif olamaz
+  // Güvenlik 3: Toplam Pas ve Nem oranı (Fire) %100 veya üzeri olamaz
+  if (rustRatio + moistureRatio >= 100) {
+    return res.status(400).json({ error: "Toplam pas ve nem oranı (toplam fire) %100 veya daha fazla olamaz." });
+  }
+
+  // Güvenlik 4: Fiyat sıfır veya negatif olamaz
   if (isNaN(basePrice) || basePrice <= 0) {
     return res.status(400).json({ error: "Fiyat (user_price) 0'dan büyük olmalıdır." });
+  }
+
+  // Güvenlik 5: Ağırlık sıfır veya negatif olamaz
+  if (isNaN(totalWeight) || totalWeight <= 0) {
+    return res.status(400).json({ error: "Ağırlık (weight) 0'dan büyük bir sayı olmalıdır." });
   }
 
   // HESAPLAMA MANTIĞI:

@@ -20,12 +20,17 @@ exports.getDashboardData = async (req, res) => {
       `SELECT COUNT(*) as activeCount FROM listings WHERE status = 'Aktif'`
     );
 
-    // 4. Bekleyen Teklif Sayısı
+    // 4. Bekleyen Teklif Sayısı (Küçük/büyük harf duyarsız dinamik sorgu)
     const offersResult = await db.get(
-      `SELECT COUNT(*) as pendingCount FROM offers WHERE status = 'pending'`
+      `SELECT COUNT(*) as pendingCount FROM offers WHERE LOWER(status) = 'pending'`
     );
 
-    // 5. Aylık İşlem Hacmi Trendi
+    // 5. Bugün Eklenen İlan Sayısı (Dinamik Günlük İstatistik)
+    const todayListingsResult = await db.get(
+      `SELECT COUNT(*) as addedToday FROM listings WHERE DATE(created_at) = DATE('now', 'localtime')`
+    );
+
+    // 6. Aylık İşlem Hacmi Trendi
     const monthlyTrend = await db.all(
       `SELECT 
         CASE strftime('%m', created_at)
@@ -58,6 +63,7 @@ exports.getDashboardData = async (req, res) => {
 
     const activeListingsCount = listingsResult.activeCount;
     const pendingOffersCount = offersResult.pendingCount;
+    const addedTodayCount = todayListingsResult.addedToday;
 
     const dashboardData = {
       kpi: {
@@ -74,13 +80,20 @@ exports.getDashboardData = async (req, res) => {
         activeListings: { 
           raw: activeListingsCount,
           value: `${activeListingsCount} İlan`, 
-          note: "Aktif yayında olanlar" 
+          addedToday: addedTodayCount,
+          note: `Bugün eklenen: ${addedTodayCount}` 
         },
         incomingOffers: { 
           raw: pendingOffersCount,
           value: `${pendingOffersCount} Yanıtsız`, 
           note: "Yanıt bekliyor ⏳" 
         }
+      },
+      // Frontend tarafında direkt istatistik olarak kullanılacak alanlar
+      stats: {
+        totalListings: activeListingsCount,
+        addedToday: addedTodayCount,
+        pendingOffers: pendingOffersCount
       },
       trendChart: monthlyTrend
     };
