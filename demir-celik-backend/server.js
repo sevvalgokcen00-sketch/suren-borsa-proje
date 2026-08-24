@@ -31,7 +31,7 @@ async function autoSeed() {
       driver: sqlite3.Database
     });
 
-    // 1. Listings tablosu yoksa oluştur
+    // 1. LISTINGS TABLOSU OLUŞTURMA & MIGRATION
     await db.exec(`
       CREATE TABLE IF NOT EXISTS listings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -58,7 +58,6 @@ async function autoSeed() {
       );
     `);
 
-    // 2. LISTINGS DİNAMİK MİGRATION: Veriyi silmeden eksik tüm kolonları ekler
     const listingColumns = await db.all("PRAGMA table_info(listings);");
     const existingListingCols = listingColumns.map(col => col.name);
 
@@ -83,7 +82,17 @@ async function autoSeed() {
       }
     }
 
-    // 3. BIDS DİNAMİK MİGRATION
+    // 2. ESKİ KAYITLARDA NULL KALAN MATERIALTYPE ALANLARINI DOLDURMA (BACKFILL)
+    await db.run("UPDATE listings SET materialType = 'Profil' WHERE (materialType IS NULL OR materialType = '') AND (title LIKE '%Profil%' OR description LIKE '%Profil%');");
+    await db.run("UPDATE listings SET materialType = 'Ekstra Hurda' WHERE (materialType IS NULL OR materialType = '') AND (title LIKE '%Ekstra%' OR description LIKE '%Ekstra%');");
+    await db.run("UPDATE listings SET materialType = 'Talaş' WHERE (materialType IS NULL OR materialType = '') AND (title LIKE '%Talaş%' OR description LIKE '%Talaş%');");
+    await db.run("UPDATE listings SET materialType = 'DKP' WHERE (materialType IS NULL OR materialType = '') AND (title LIKE '%DKP%' OR description LIKE '%DKP%');");
+    await db.run("UPDATE listings SET materialType = 'Karışık Hurda' WHERE (materialType IS NULL OR materialType = '') AND (title LIKE '%Karışık%' OR title LIKE '%Mahalle%');");
+    await db.run("UPDATE listings SET materialType = '1.Grup Hurda' WHERE (materialType IS NULL OR materialType = '') AND title LIKE '%1.Grup%';");
+    // Kalan diğer boş kayıtlara varsayılan değer
+    await db.run("UPDATE listings SET materialType = 'Genel Hurda' WHERE materialType IS NULL OR materialType = '';");
+
+    // 3. BIDS TABLOSU & MIGRATION
     await db.exec(`
       CREATE TABLE IF NOT EXISTS bids (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -114,7 +123,7 @@ async function autoSeed() {
       }
     }
 
-    // 4. MARKET TABLOLARI VE SEED VERİLERİ
+    // 4. PRICE_INDEXES VE PRICE_HISTORY MIGRATION
     await db.exec(`
       CREATE TABLE IF NOT EXISTS price_indexes (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -133,58 +142,52 @@ async function autoSeed() {
       );
     `);
 
-    const marketCount = await db.get('SELECT COUNT(*) as cnt FROM price_indexes');
-    if (marketCount.cnt === 0) {
-      console.log('⚡ Market endeks ve geçmiş fiyat verileri yükleniyor...');
-      
-      const sampleIndexes = [
-        { materialType: 'Profil', basePrice: 13.0, currentAveragePrice: 13.50, trend: 'up' },
-        { materialType: 'Ekstra Hurda', basePrice: 11.5, currentAveragePrice: 12.10, trend: 'stable' },
-        { materialType: 'DKP', basePrice: 13.8, currentAveragePrice: 14.30, trend: 'up' },
-        { materialType: 'Talaş', basePrice: 9.8, currentAveragePrice: 10.20, trend: 'down' }
-      ];
+    const indexColumns = await db.all("PRAGMA table_info(price_indexes);");
+    const existingIndexCols = indexColumns.map(col => col.name);
 
+    const requiredIndexCols = [
+      { name: 'materialType', type: 'TEXT' },
+      { name: 'basePrice', type: 'REAL' },
+      { name: 'currentAveragePrice', type: 'REAL' },
+      { name: 'trend', type: 'TEXT' }
+    ];
+
+    for (const col of requiredIndexCols) {
+      if (!existingIndexCols.includes(col.name)) {
+        await db.run(`ALTER TABLE price_indexes ADD COLUMN ${col.name} ${col.type};`);
+        console.log(`🛠️ price_indexes tablosuna '${col.name}' kolonu eklendi.`);
+      }
+    }
+
+    // 5. MARKET VERİLERİNİ YÜKLE
+    const sampleIndexes = [
+      { materialType: 'Profil', basePrice: 13.0, currentAveragePrice: 13.50, trend: 'up' },
+      { materialType: 'Ekstra Hurda', basePrice: 11.5, currentAveragePrice: 12.10, trend: 'stable' },
+      { materialType: 'DKP', basePrice: 13.8, currentAveragePrice: 14.30, trend: 'up' },
+      { materialType: 'Talaş', basePrice: 9.8, currentAveragePrice: 10.20, trend: 'down' }
+    ];
+
+    for (const idx of sampleIndexes) {
+      await db.run(
+        `INSERT OR REPLACE INTO price_indexes (materialType, basePrice, currentAveragePrice, trend) VALUES (?, ?, ?, ?)`,
+        [idx.materialType, idx.basePrice, idx.currentAveragePrice, idx.trend]
+      );
+    }
+
+    const historyCount = await db.get('SELECT COUNT(*) as cnt FROM price_history');
+    if (historyCount.cnt === 0) {
       for (const idx of sampleIndexes) {
         await db.run(
-          `INSERT OR REPLACE INTO price_indexes (materialType, basePrice, currentAveragePrice, trend) VALUES (?, ?, ?, ?)`,
-          [idx.materialType, idx.basePrice, idx.currentAveragePrice, idx.trend]
-        );
-
-        await db.run(
-          `INSERT INTO price_history (materialType, price, recordedDate) VALUES (?, ?, date('now', '-7 days')), (?, ?, date('now', '-3 days')), (?, ?, date('now'))`,
+          `INSERT INTO price_history (materialType, price, recordedDate) VALUES 
+            (?, ?, date('now', '-7 days')), 
+            (?, ?, date('now', '-3 days')), 
+            (?, ?, date('now'))`,
           [idx.materialType, idx.basePrice, idx.materialType, idx.currentAveragePrice - 0.2, idx.materialType, idx.currentAveragePrice]
         );
       }
-      console.log('🎉 Market verileri başarıyla yüklendi!');
+      console.log('🎉 Market endeks ve geçmiş verileri yüklendi!');
     }
 
-    // 5. Başlangıç Verilerini Yükle
-    const count = await db.get('SELECT COUNT(*) as cnt FROM listings');
-    if (count.cnt === 0) {
-      console.log('⚡ Veritabanı boş, başlangıç ilanları ekleniyor...');
-      const initialListings = [
-        { userId: 1, companyName: 'Marmara Geri Dönüşüm A.Ş.', materialType: 'Profil', title: 'İmalat Artığı Profil - Gevşek', description: 'Yağlı-Kontamine nitelikte İmalat Artığı Profil.', weight: 931.9, unit: 'kg', price: 13.58, usageStatus: 'Yağlı-Kontamine', locationCity: 'Gaziantep', locationDistrict: 'Şehitkamil', qualityStandard: 'DIN 2395', deliveryType: 'Fabrika Teslim' },
-        { userId: 1, companyName: 'Anadolu Metal Sanayi', materialType: 'Ekstra Hurda', title: 'Ekstra Hurda - Preslenmiş Balya', description: 'Temiz nitelikte Ekstra Hurda.', weight: 1100.6, unit: 'kg', price: 12.07, usageStatus: 'Temiz', locationCity: 'Gaziantep', locationDistrict: 'Şahinbey', qualityStandard: 'EN 10025', deliveryType: 'Adrese Teslim' },
-        { userId: 2, companyName: 'Ege Çelik Geri Kazanım', materialType: 'Talaş', title: 'Talaş / Kırpıntı - Preslenmiş Balya', description: 'Temiz nitelikte Talaş / Kırpıntı.', weight: 176.1, unit: 'kg', price: 10.46, usageStatus: 'Temiz', locationCity: 'İstanbul', locationDistrict: 'Ümraniye', qualityStandard: 'Standart Dışı', deliveryType: 'Fabrika Teslim' },
-        { userId: 2, companyName: 'Boğaziçi Hurda Sanayi', materialType: 'DKP', title: 'DKP Hurda - Parçalanmış', description: 'Temiz nitelikte DKP Hurda.', weight: 1349.8, unit: 'kg', price: 14.26, usageStatus: 'Temiz', locationCity: 'İstanbul', locationDistrict: 'Tuzla', qualityStandard: 'DIN EN 10130', deliveryType: 'Adrese Teslim' }
-      ];
-
-      for (const item of initialListings) {
-        await db.run(
-          `INSERT INTO listings (
-            userId, companyName, categoryId, materialType, title, description, 
-            weight, unit, price, usageStatus, locationCity, locationDistrict, 
-            hasCertificate, status, imageUrls, qualityStandard, deliveryType
-          ) VALUES (?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'Active', '[]', ?, ?)`,
-          [
-            item.userId, item.companyName, item.materialType, item.title, item.description,
-            item.weight, item.unit, item.price, item.usageStatus, item.locationCity, item.locationDistrict,
-            item.qualityStandard, item.deliveryType
-          ]
-        );
-      }
-      console.log('🎉 Başlangıç ilanları veritabanına başarıyla yüklendi!');
-    }
   } catch (err) {
     console.error('Auto seed / migration hatası:', err.message);
   }
