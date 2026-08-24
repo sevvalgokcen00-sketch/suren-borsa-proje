@@ -89,7 +89,6 @@ async function autoSeed() {
     await db.run("UPDATE listings SET materialType = 'DKP' WHERE (materialType IS NULL OR materialType = '') AND (title LIKE '%DKP%' OR description LIKE '%DKP%');");
     await db.run("UPDATE listings SET materialType = 'Karışık Hurda' WHERE (materialType IS NULL OR materialType = '') AND (title LIKE '%Karışık%' OR title LIKE '%Mahalle%');");
     await db.run("UPDATE listings SET materialType = '1.Grup Hurda' WHERE (materialType IS NULL OR materialType = '') AND title LIKE '%1.Grup%';");
-    // Kalan diğer boş kayıtlara varsayılan değer
     await db.run("UPDATE listings SET materialType = 'Genel Hurda' WHERE materialType IS NULL OR materialType = '';");
 
     // 3. BIDS TABLOSU & MIGRATION
@@ -131,6 +130,7 @@ async function autoSeed() {
         basePrice REAL,
         currentAveragePrice REAL,
         trend TEXT,
+        referencePrice REAL,
         updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -149,7 +149,8 @@ async function autoSeed() {
       { name: 'materialType', type: 'TEXT' },
       { name: 'basePrice', type: 'REAL' },
       { name: 'currentAveragePrice', type: 'REAL' },
-      { name: 'trend', type: 'TEXT' }
+      { name: 'trend', type: 'TEXT' },
+      { name: 'referencePrice', type: 'REAL' }
     ];
 
     for (const col of requiredIndexCols) {
@@ -159,7 +160,7 @@ async function autoSeed() {
       }
     }
 
-    // 5. MARKET VERİLERİNİ YÜKLE
+    // 5. MARKET VERİLERİNİ YÜKLE (referencePrice dahil)
     const sampleIndexes = [
       { materialType: 'Profil', basePrice: 13.0, currentAveragePrice: 13.50, trend: 'up' },
       { materialType: 'Ekstra Hurda', basePrice: 11.5, currentAveragePrice: 12.10, trend: 'stable' },
@@ -169,8 +170,8 @@ async function autoSeed() {
 
     for (const idx of sampleIndexes) {
       await db.run(
-        `INSERT OR REPLACE INTO price_indexes (materialType, basePrice, currentAveragePrice, trend) VALUES (?, ?, ?, ?)`,
-        [idx.materialType, idx.basePrice, idx.currentAveragePrice, idx.trend]
+        `INSERT OR REPLACE INTO price_indexes (materialType, basePrice, currentAveragePrice, trend, referencePrice) VALUES (?, ?, ?, ?, ?)`,
+        [idx.materialType, idx.basePrice, idx.currentAveragePrice, idx.trend, idx.basePrice]
       );
     }
 
