@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const listingRoutes = require('./routes/listings');
 const bidsRouter = require('./routes/bids');
 const marketRouter = require('./routes/market');
+const ordersRouter = require('./routes/orders');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -16,6 +17,7 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/orders', ordersRouter);
 
 // Routes
 app.use('/api/auth', authRoutes);
