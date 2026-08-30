@@ -45,7 +45,7 @@ async function getDb() {
     );
   `);
 
-  // Eksik olabilecek kolonlar için güvenli migration
+  // Eksik olabilecek kolonlar için dinamik migration
   const historyCols = (await db.all("PRAGMA table_info(price_history);")).map(c => c.name);
   if (!historyCols.includes('recordedDate')) {
     await db.run("ALTER TABLE price_history ADD COLUMN recordedDate DATE;");
@@ -59,7 +59,6 @@ async function getDb() {
 
 // --------------------------------------------------------------------------
 // 1. TÜM ENDEKSLERİ LİSTELEME (GET /api/market/indexes)
-// (Ana sayfadaki hareketli borsa fiyat şeridi için)
 // --------------------------------------------------------------------------
 router.get('/indexes', async (req, res) => {
   try {
@@ -73,13 +72,11 @@ router.get('/indexes', async (req, res) => {
 
 // --------------------------------------------------------------------------
 // 2. BELİRLİ MALZEMENİN GEÇMİŞİNİ VE ENDEKSİNİ GETİRME (GET /api/market/history/:materialType)
-// (7 ve 30 günlük çizgi grafikleri için)
 // --------------------------------------------------------------------------
 router.get('/history/:materialType', async (req, res) => {
   try {
     const db = await getDb();
     
-    // Hem 'recordedDate' hem 'date' alanlarını destekleyecek ve hatayı önleyecek dinamik sorgu
     const history = await db.all(
       `SELECT id, materialType, price, 
               COALESCE(recordedDate, id) as recordedDate, 
@@ -103,7 +100,14 @@ router.get('/history/:materialType', async (req, res) => {
 router.post('/calculate-recommendation', async (req, res) => {
   try {
     const db = await getDb();
-    const { materialType, userPrice, contamination } = req.body;
+    const { 
+      materialType, 
+      userPrice, 
+      price, 
+      contamination, 
+      usageStatus, 
+      hasCertificate 
+    } = req.body;
 
     if (!materialType) {
       return res.status(400).json({ message: "Malzeme türü zorunludur!" });
@@ -112,19 +116,30 @@ router.post('/calculate-recommendation', async (req, res) => {
     const index = await db.get('SELECT * FROM price_indexes WHERE materialType = ?', [materialType]);
 
     // Kayıt yoksa varsayılan baz fiyat ata
-    let refPrice = index ? (index.referencePrice || index.basePrice || 12.5) : 12.5;
+    let baseRef = index ? (index.referencePrice || index.basePrice || 12.5) : 12.5;
+    let multiplier = 1.0;
 
-    // Pas/Kirlilik durumuna göre dinamik ıskonto
-    if (contamination === 'Yağlı-Kontamine' || contamination === 'Ağır Paslı') {
-      refPrice = refPrice * 0.92;
+    // Pas / Temizlik / Kullanım durumu kontrolü (hem usageStatus hem contamination destekler)
+    const statusVal = usageStatus || contamination;
+    if (statusVal === 'Yağlı-Kontamine' || statusVal === 'Ağır Paslı') {
+      multiplier -= 0.08;
+    } else if (statusVal === 'Temiz') {
+      multiplier += 0.03;
     }
 
-    const minRecommended = (refPrice * 0.95).toFixed(2);
-    const maxRecommended = (refPrice * 1.05).toFixed(2);
+    // Sertifika kontrolü
+    if (hasCertificate === true || hasCertificate === 'true' || hasCertificate === 1) {
+      multiplier += 0.03;
+    }
 
+    const refPrice = Number((baseRef * multiplier).toFixed(2));
+    const minRecommended = Number((refPrice * 0.95).toFixed(2));
+    const maxRecommended = Number((refPrice * 1.05).toFixed(2));
+
+    const enteredPrice = userPrice !== undefined ? userPrice : price;
     let comparisonNote = "";
-    if (userPrice) {
-      const diffPercent = (((userPrice - refPrice) / refPrice) * 100).toFixed(1);
+    if (enteredPrice) {
+      const diffPercent = (((Number(enteredPrice) - refPrice) / refPrice) * 100).toFixed(1);
       if (diffPercent > 0) {
         comparisonNote = `Girilen ilan fiyatı referans medyanın %${diffPercent} üzerinde`;
       } else if (diffPercent < 0) {
@@ -134,11 +149,17 @@ router.post('/calculate-recommendation', async (req, res) => {
       }
     }
 
+    // Frontend'in hem Türkçe TL anahtarlarını hem de standart İngilizce anahtarları okuyabilmesi için çift uyumluluk
     res.json({
       materialType: materialType,
+      basePrice: baseRef,
+      recommendedPrice: refPrice,
+      minPrice: minRecommended,
+      maxPrice: maxRecommended,
       platformReferenceTL: refPrice.toFixed(2),
-      recommendedMinTL: minRecommended,
-      recommendedMaxTL: maxRecommended,
+      recommendedMinTL: minRecommended.toFixed(2),
+      recommendedMaxTL: maxRecommended.toFixed(2),
+      trend: index ? (index.trend || 'stable') : 'stable',
       trustLevel: index ? (index.trustLevel || 'Yüksek') : 'Orta',
       transactionCount: index ? (index.transactionCount || 5) : 5,
       comparisonNote: comparisonNote

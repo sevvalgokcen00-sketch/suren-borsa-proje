@@ -7,7 +7,7 @@ const path = require('path');
 
 // Multer (Resim Yükleme) Ayarları
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, 'uploads/'),
+  destination: (req, file, cb) => cb(null, path.join(__dirname, '../uploads')),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
@@ -27,7 +27,7 @@ async function getDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       userId INTEGER DEFAULT 1,
       companyName TEXT DEFAULT 'Referans Demir Çelik A.Ş.',
-      categoryId INTEGER,
+      categoryId INTEGER DEFAULT 1,
       materialType TEXT,
       title TEXT NOT NULL,
       description TEXT,
@@ -63,7 +63,7 @@ router.get('/', async (req, res) => {
       userId, categoryId, sort 
     } = req.query;
 
-    // Sadece aktif ilanları çekiyoruz
+    // Sadece aktif ilanları çekiyoruz (Silinen ve arşivlenenleri filtre dışı bırakır)
     let query = "SELECT * FROM listings WHERE status = 'Active'";
     let params = [];
 
@@ -95,8 +95,8 @@ router.get('/', async (req, res) => {
     }
 
     if (city) {
-      query += ' AND locationCity = ?';
-      params.push(city);
+      query += ' AND locationCity LIKE ?';
+      params.push(`%${city}%`);
     }
 
     if (minPrice) { query += ' AND price >= ?'; params.push(Number(minPrice)); }
@@ -124,10 +124,18 @@ router.get('/', async (req, res) => {
 
     const listings = await db.all(query, params);
 
-    const formattedListings = listings.map(item => ({
-      ...item,
-      imageUrls: item.imageUrls ? JSON.parse(item.imageUrls) : []
-    }));
+    const formattedListings = listings.map(item => {
+      let parsedImages = [];
+      try {
+        parsedImages = item.imageUrls ? JSON.parse(item.imageUrls) : [];
+      } catch (e) {
+        parsedImages = [];
+      }
+      return {
+        ...item,
+        imageUrls: parsedImages
+      };
+    });
 
     res.json(formattedListings);
   } catch (error) {
@@ -141,15 +149,22 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const db = await getDb();
-    const listing = await db.get('SELECT * FROM listings WHERE id = ?', [req.params.id]);
+    const listing = await db.get("SELECT * FROM listings WHERE id = ? AND status != 'Archived'", [req.params.id]);
 
     if (!listing) {
       return res.status(404).json({ message: "İlan bulunamadı!" });
     }
 
+    let parsedImages = [];
+    try {
+      parsedImages = listing.imageUrls ? JSON.parse(listing.imageUrls) : [];
+    } catch (e) {
+      parsedImages = [];
+    }
+
     res.json({
       ...listing,
-      imageUrls: listing.imageUrls ? JSON.parse(listing.imageUrls) : []
+      imageUrls: parsedImages
     });
   } catch (error) {
     res.status(500).json({ message: "İlan detayı alınırken hata oluştu!", error: error.message });
@@ -208,7 +223,7 @@ router.post('/', upload.array('images', 5), async (req, res) => {
         usageStatus || '', 
         locationCity, 
         locationDistrict, 
-        hasCertificate === 'true' || hasCertificate === true ? 1 : 0, 
+        hasCertificate === 'true' || hasCertificate === true || hasCertificate == 1 ? 1 : 0, 
         JSON.stringify(imageUrls),
         qualityStandard || '',
         deliveryType || '',
@@ -260,7 +275,13 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
       return res.status(400).json({ message: "Miktar/Ağırlık 0'dan büyük bir değer olmalıdır!" });
     }
 
-    let imageUrls = existingListing.imageUrls ? JSON.parse(existingListing.imageUrls) : [];
+    let imageUrls = [];
+    try {
+      imageUrls = existingListing.imageUrls ? JSON.parse(existingListing.imageUrls) : [];
+    } catch (e) {
+      imageUrls = [];
+    }
+
     if (req.files && req.files.length > 0) {
       imageUrls = req.files.map(file => `/uploads/${file.filename}`);
     }
@@ -295,7 +316,7 @@ router.put('/:id', upload.array('images', 5), async (req, res) => {
         locationCity !== undefined ? locationCity : null, 
         locationDistrict !== undefined ? locationDistrict : null, 
         categoryId !== undefined ? Number(categoryId) : null, 
-        hasCertificate !== undefined ? (hasCertificate === 'true' || hasCertificate === true ? 1 : 0) : null,
+        hasCertificate !== undefined ? (hasCertificate === 'true' || hasCertificate === true || hasCertificate == 1 ? 1 : 0) : null,
         qualityStandard !== undefined ? qualityStandard : null,
         deliveryType !== undefined ? deliveryType : null,
         wallThickness !== undefined ? wallThickness : null,
