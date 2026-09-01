@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const listingRoutes = require('./routes/listings');
 const bidsRouter = require('./routes/bids');
 const marketRouter = require('./routes/market');
+const homeRouter = require('./routes/home'); // <-- Home route eklendi
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,6 +23,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/listings', listingRoutes);
 app.use('/api/bids', bidsRouter);
 app.use('/api/market', marketRouter);
+app.use('/api/home', homeRouter); // <-- /api/home adresi tanımlandı
 
 // Otomatik Veri Yükleyici (Seed)
 async function autoSeed() {
