@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const listingRoutes = require('./routes/listings');
 const bidsRouter = require('./routes/bids');
 const marketRouter = require('./routes/market');
+const ordersRouter = require('./routes/orders');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -16,6 +17,7 @@ const PORT = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/api/orders', ordersRouter);
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -23,7 +25,7 @@ app.use('/api/listings', listingRoutes);
 app.use('/api/bids', bidsRouter);
 app.use('/api/market', marketRouter);
 
-// Otomatik Veri Yükleyici (Seed) ve Tablo Onarıcı
+// Otomatik Veri Yükleyici (Seed) ve Dinamik Kolon Onarıcı
 async function autoSeed() {
   try {
     const db = await open({
@@ -31,15 +33,18 @@ async function autoSeed() {
       driver: sqlite3.Database
     });
 
-    // 1. Tablo yoksa oluştur
+    // 1. LISTINGS TABLOSU OLUŞTURMA & MIGRATION
     await db.exec(`
       CREATE TABLE IF NOT EXISTS listings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        categoryId INTEGER,
+        userId INTEGER DEFAULT 1,
+        companyName TEXT DEFAULT 'Referans Demir Çelik A.Ş.',
+        categoryId INTEGER DEFAULT 1,
+        materialType TEXT,
         title TEXT,
         description TEXT,
         weight REAL,
-        unit TEXT,
+        unit TEXT DEFAULT 'kg',
         price REAL,
         usageStatus TEXT,
         locationCity TEXT,
@@ -47,51 +52,237 @@ async function autoSeed() {
         hasCertificate INTEGER DEFAULT 0,
         status TEXT DEFAULT 'Active',
         imageUrls TEXT DEFAULT '[]',
+        qualityStandard TEXT,
+        deliveryType TEXT,
+        wallThickness TEXT,
+        chemicalAnalysis TEXT,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // 2. OTOMATİK MİGRATİON: Eksik olan kolonları kontrol edip otomatik ekler
-    const columns = await db.all("PRAGMA table_info(listings);");
-    const existingCols = columns.map(col => col.name);
+    const listingColumns = await db.all("PRAGMA table_info(listings);");
+    const existingListingCols = listingColumns.map(col => col.name);
 
-    if (!existingCols.includes('hasCertificate')) {
-      await db.run("ALTER TABLE listings ADD COLUMN hasCertificate INTEGER DEFAULT 0;");
-      console.log("🛠️ 'hasCertificate' kolonu tabloya eklendi.");
-    }
-    if (!existingCols.includes('status')) {
-      await db.run("ALTER TABLE listings ADD COLUMN status TEXT DEFAULT 'Active';");
-      console.log("🛠️ 'status' kolonu tabloya eklendi.");
-    }
-    if (!existingCols.includes('imageUrls')) {
-      await db.run("ALTER TABLE listings ADD COLUMN imageUrls TEXT DEFAULT '[]';");
-      console.log("🛠️ 'imageUrls' kolonu tabloya eklendi.");
+    const requiredListingCols = [
+      { name: 'userId', type: 'INTEGER DEFAULT 1' },
+      { name: 'companyName', type: "TEXT DEFAULT 'Referans Demir Çelik A.Ş.'" },
+      { name: 'categoryId', type: 'INTEGER DEFAULT 1' },
+      { name: 'materialType', type: 'TEXT' },
+      { name: 'hasCertificate', type: 'INTEGER DEFAULT 0' },
+      { name: 'status', type: "TEXT DEFAULT 'Active'" },
+      { name: 'imageUrls', type: "TEXT DEFAULT '[]'" },
+      { name: 'qualityStandard', type: 'TEXT' },
+      { name: 'deliveryType', type: 'TEXT' },
+      { name: 'wallThickness', type: 'TEXT' },
+      { name: 'chemicalAnalysis', type: 'TEXT' }
+    ];
+
+    for (const col of requiredListingCols) {
+      if (!existingListingCols.includes(col.name)) {
+        await db.run(`ALTER TABLE listings ADD COLUMN ${col.name} ${col.type};`);
+        console.log(`🛠️ listings tablosuna '${col.name}' kolonu eklendi.`);
+      }
     }
 
-    // 3. Başlangıç Verilerini Yükle
-    const count = await db.get('SELECT COUNT(*) as cnt FROM listings');
-    if (count.cnt === 0) {
-      console.log('⚡ Veritabanı boş, başlangıç ilanları ekleniyor...');
-      const initialListings = [
-        { title: 'İmalat Artığı Profil - Gevşek', description: 'Yağlı-Kontamine nitelikte İmalat Artığı Profil.', weight: 931.9, unit: 'kg', price: 13.58, usageStatus: 'Yağlı-Kontamine', locationCity: 'Gaziantep', locationDistrict: 'Şehitkamil' },
-        { title: 'Ekstra Hurda - Preslenmiş Balya', description: 'Temiz nitelikte Ekstra Hurda.', weight: 1100.6, unit: 'kg', price: 12.07, usageStatus: 'Temiz', locationCity: 'Gaziantep', locationDistrict: 'Şahinbey' },
-        { title: 'Talaş / Kırpıntı - Preslenmiş Balya', description: 'Temiz nitelikte Talaş / Kırpıntı.', weight: 176.1, unit: 'kg', price: 10.46, usageStatus: 'Temiz', locationCity: 'İstanbul', locationDistrict: 'Ümraniye' },
-        { title: 'DKP Hurda - Parçalanmış', description: 'Temiz nitelikte DKP Hurda.', weight: 1349.8, unit: 'kg', price: 14.26, usageStatus: 'Temiz', locationCity: 'İstanbul', locationDistrict: 'Tuzla' },
-        { title: 'Talaş / Kırpıntı - Parçalanmış', description: 'Ağır Paslı nitelikte Talaş / Kırpıntı.', weight: 1732.2, unit: 'kg', price: 8.82, usageStatus: 'Ağır Paslı', locationCity: 'İstanbul', locationDistrict: 'Tuzla' },
-        { title: 'Mahalle (Karışık) - Gevşek', description: 'Yağlı-Kontamine nitelikte Karışık Hurda.', weight: 1100.1, unit: 'kg', price: 8.30, usageStatus: 'Yağlı-Kontamine', locationCity: 'İstanbul', locationDistrict: 'Esenyurt' },
-        { title: '1.Grup Hurda - Balya', description: 'Temiz nitelikte 1.Grup Hurda.', weight: 999.1, unit: 'kg', price: 10.68, usageStatus: 'Temiz', locationCity: 'Kocaeli', locationDistrict: 'Gebze' }
-      ];
+    // 2. ESKİ KAYITLARDA NULL KALAN MATERIALTYPE ALANLARINI DOLDURMA (BACKFILL)
+    await db.run("UPDATE listings SET materialType = 'Profil' WHERE (materialType IS NULL OR materialType = '') AND (title LIKE '%Profil%' OR description LIKE '%Profil%');");
+    await db.run("UPDATE listings SET materialType = 'Ekstra Hurda' WHERE (materialType IS NULL OR materialType = '') AND (title LIKE '%Ekstra%' OR description LIKE '%Ekstra%');");
+    await db.run("UPDATE listings SET materialType = 'Talaş' WHERE (materialType IS NULL OR materialType = '') AND (title LIKE '%Talaş%' OR description LIKE '%Talaş%');");
+    await db.run("UPDATE listings SET materialType = 'DKP' WHERE (materialType IS NULL OR materialType = '') AND (title LIKE '%DKP%' OR description LIKE '%DKP%');");
+    await db.run("UPDATE listings SET materialType = 'Karışık Hurda' WHERE (materialType IS NULL OR materialType = '') AND (title LIKE '%Karışık%' OR title LIKE '%Mahalle%');");
+    await db.run("UPDATE listings SET materialType = '1.Grup Hurda' WHERE (materialType IS NULL OR materialType = '') AND title LIKE '%1.Grup%';");
+    await db.run("UPDATE listings SET materialType = 'Genel Hurda' WHERE materialType IS NULL OR materialType = '';");
 
-      for (const item of initialListings) {
+    // 3. BIDS TABLOSU & MIGRATION
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS bids (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        listingId INTEGER NOT NULL,
+        buyerId INTEGER DEFAULT 1,
+        buyerCompanyName TEXT,
+        companyName TEXT,
+        price REAL NOT NULL,
+        amount REAL NOT NULL,
+        unit TEXT DEFAULT 'kg',
+        status TEXT DEFAULT 'Bekliyor',
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    const bidColumns = await db.all("PRAGMA table_info(bids);");
+    const existingBidCols = bidColumns.map(col => col.name);
+
+    const requiredBidCols = [
+      { name: 'buyerId', type: 'INTEGER DEFAULT 1' },
+      { name: 'buyerCompanyName', type: 'TEXT' }
+    ];
+
+    for (const col of requiredBidCols) {
+      if (!existingBidCols.includes(col.name)) {
+        await db.run(`ALTER TABLE bids ADD COLUMN ${col.name} ${col.type};`);
+        console.log(`🛠️ bids tablosuna '${col.name}' kolonu eklendi.`);
+      }
+    }
+
+    // 4. PRICE_INDEXES VE PRICE_HISTORY MIGRATION
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS price_indexes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        materialType TEXT UNIQUE,
+        basePrice REAL,
+        currentAveragePrice REAL,
+        trend TEXT,
+        referencePrice REAL,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS price_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        materialType TEXT,
+        price REAL,
+        recordedDate DATE DEFAULT (date('now'))
+      );
+    `);
+
+    const indexColumns = await db.all("PRAGMA table_info(price_indexes);");
+    const existingIndexCols = indexColumns.map(col => col.name);
+
+    const requiredIndexCols = [
+      { name: 'materialType', type: 'TEXT' },
+      { name: 'basePrice', type: 'REAL' },
+      { name: 'currentAveragePrice', type: 'REAL' },
+      { name: 'trend', type: 'TEXT' },
+      { name: 'referencePrice', type: 'REAL' }
+    ];
+
+    for (const col of requiredIndexCols) {
+      if (!existingIndexCols.includes(col.name)) {
+        await db.run(`ALTER TABLE price_indexes ADD COLUMN ${col.name} ${col.type};`);
+        console.log(`🛠️ price_indexes tablosuna '${col.name}' kolonu eklendi.`);
+      }
+    }
+
+    // 5. MARKET VERİLERİNİ YÜKLE (referencePrice dahil)
+    const sampleIndexes = [
+      { materialType: 'Profil', basePrice: 13.0, currentAveragePrice: 13.50, trend: 'up' },
+      { materialType: 'Ekstra Hurda', basePrice: 11.5, currentAveragePrice: 12.10, trend: 'stable' },
+      { materialType: 'DKP', basePrice: 13.8, currentAveragePrice: 14.30, trend: 'up' },
+      { materialType: 'Talaş', basePrice: 9.8, currentAveragePrice: 10.20, trend: 'down' }
+    ];
+
+    for (const idx of sampleIndexes) {
+      await db.run(
+        `INSERT OR REPLACE INTO price_indexes (materialType, basePrice, currentAveragePrice, trend, referencePrice) VALUES (?, ?, ?, ?, ?)`,
+        [idx.materialType, idx.basePrice, idx.currentAveragePrice, idx.trend, idx.basePrice]
+      );
+    }
+
+    const historyCount = await db.get('SELECT COUNT(*) as cnt FROM price_history');
+    if (historyCount.cnt === 0) {
+      for (const idx of sampleIndexes) {
         await db.run(
-          `INSERT INTO listings (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, status, imageUrls) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [1, item.title, item.description, item.weight, item.unit, item.price, item.usageStatus, item.locationCity, item.locationDistrict, 1, 'Active', '[]']
+          `INSERT INTO price_history (materialType, price, recordedDate) VALUES 
+            (?, ?, date('now', '-7 days')), 
+            (?, ?, date('now', '-3 days')), 
+            (?, ?, date('now'))`,
+          [idx.materialType, idx.basePrice, idx.materialType, idx.currentAveragePrice - 0.2, idx.materialType, idx.currentAveragePrice]
         );
       }
-      console.log('🎉 Başlangıç ilanları veritabanına başarıyla yüklendi!');
+      console.log('🎉 Market endeks ve geçmiş verileri yüklendi!');
     }
+
+    // =========================================================================
+    // 6. 67 GÖRSELLİK HAVUZU İLANLARA DİNAMİK EŞLEŞTİRME KURAL MOTORU
+    // =========================================================================
+    console.log('🖼️ 67 fotoğraflık görsel havuzu ilanlara taranıyor ve atanıyor...');
+
+    // 1. Ağır Paslı / Oksitli İlanlar -> MD-AGIRPASLI serisi
+    await db.run(`
+      UPDATE listings 
+      SET imageUrls = '["/uploads/MD-AGIRPASLI-01.jpg", "/uploads/MD-AGIRPASLI-02.jpg"]' 
+      WHERE (usageStatus LIKE '%Pas%' OR description LIKE '%pas%' OR title LIKE '%Pas%')
+        AND (imageUrls = '[]' OR imageUrls IS NULL OR imageUrls = '');
+    `);
+
+    // 2. Yağlı / Kontamine İlanlar -> MD-YAGLIKONTAMINE serisi
+    await db.run(`
+      UPDATE listings 
+      SET imageUrls = '["/uploads/MD-YAGLIKONTAMINE-01.jpg", "/uploads/MD-YAGLIKONTAMINE-02.jpg"]' 
+      WHERE (usageStatus LIKE '%Yağ%' OR usageStatus LIKE '%Kontamine%' OR description LIKE '%yağlı%')
+        AND (imageUrls = '[]' OR imageUrls IS NULL OR imageUrls = '');
+    `);
+
+    // 3. Yabancı Madde / Karışık Hurda -> MD-YABANCIMADDE serisi
+    await db.run(`
+      UPDATE listings 
+      SET imageUrls = '["/uploads/MD-YABANCIMADDE-01.jpg", "/uploads/MD-YABANCIMADDE-02.jpg"]' 
+      WHERE (title LIKE '%Karışık%' OR title LIKE '%Mahalle%' OR usageStatus LIKE '%Yabancı%')
+        AND (imageUrls = '[]' OR imageUrls IS NULL OR imageUrls = '');
+    `);
+
+    // 4. Talaş / Kırpıntı İlanları -> AT-TALAS ve PB serisi
+    await db.run(`
+      UPDATE listings 
+      SET imageUrls = '["/uploads/AT-TALAS-01.jpg", "/uploads/PB-BALYA-02.jpg"]' 
+      WHERE (title LIKE '%Talaş%' OR materialType = 'Talaş') AND (title LIKE '%Balya%' OR description LIKE '%balya%')
+        AND (imageUrls = '[]' OR imageUrls IS NULL OR imageUrls = '');
+    `);
+    await db.run(`
+      UPDATE listings 
+      SET imageUrls = '["/uploads/AT-TALAS-02.jpg", "/uploads/PB-PARCALANMIS-02.jpg"]' 
+      WHERE (title LIKE '%Talaş%' OR materialType = 'Talaş')
+        AND (imageUrls = '[]' OR imageUrls IS NULL OR imageUrls = '');
+    `);
+
+    // 5. Profil / İmalat Artığı -> AT-IMALATARTIGI ve PB-GEVSEK serisi
+    await db.run(`
+      UPDATE listings 
+      SET imageUrls = '["/uploads/PB-GEVSEK-01.jpg", "/uploads/AT-HURDA-01.jpg"]' 
+      WHERE (title LIKE '%Profil%' OR materialType = 'Profil')
+        AND (imageUrls = '[]' OR imageUrls IS NULL OR imageUrls = '');
+    `);
+
+    // 6. DKP Hurda -> PB-PARCALANMIS ve MD-TEMIZ serisi
+    await db.run(`
+      UPDATE listings 
+      SET imageUrls = '["/uploads/PB-PARCALANMIS-01.jpg", "/uploads/MD-TEMIZ-02.jpg"]' 
+      WHERE (title LIKE '%DKP%' OR materialType = 'DKP')
+        AND (imageUrls = '[]' OR imageUrls IS NULL OR imageUrls = '');
+    `);
+
+    // 7. Ekstra Hurda & 1.Grup Hurda -> PB-BALYA ve AT-HURDA serisi
+    await db.run(`
+      UPDATE listings 
+      SET imageUrls = '["/uploads/PB-BALYA-01.jpg", "/uploads/AT-HURDA-03.jpg"]' 
+      WHERE title LIKE '%Ekstra%'
+        AND (imageUrls = '[]' OR imageUrls IS NULL OR imageUrls = '');
+    `);
+    await db.run(`
+      UPDATE listings 
+      SET imageUrls = '["/uploads/PB-BALYA-03.jpg", "/uploads/AT-HURDA-04.jpg"]' 
+      WHERE title LIKE '%1.Grup%'
+        AND (imageUrls = '[]' OR imageUrls IS NULL OR imageUrls = '');
+    `);
+
+    // 8. Temiz / Kusursuz Malzemeler -> MD-TEMIZ serisi
+    await db.run(`
+      UPDATE listings 
+      SET imageUrls = '["/uploads/MD-TEMIZ-01.jpg", "/uploads/MD-TEMIZ-03.jpg"]' 
+      WHERE (usageStatus = 'Temiz' OR title LIKE '%Temiz%')
+        AND (imageUrls = '[]' OR imageUrls IS NULL OR imageUrls = '');
+    `);
+
+    // 9. Geriye kalan / eşleşmeyen her türlü ilan için GENEL (GEN-) serisi
+    await db.run(`
+      UPDATE listings 
+      SET imageUrls = '["/uploads/GEN-01.jpg", "/uploads/GEN-02.jpg"]' 
+      WHERE imageUrls = '[]' OR imageUrls IS NULL OR imageUrls = '';
+    `);
+
+    console.log('✅ Tüm ilanların fotoğrafları 67 görsel havuzundan başarıyla bağlandı!');
+
   } catch (err) {
-    console.error('Auto seed hatası:', err.message);
+    console.error('Auto seed / migration hatası:', err.message);
   }
 }
 
