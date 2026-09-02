@@ -1,0 +1,122 @@
+[
+  {
+    "id": "T-00001",
+    "title": "10mm S235JR Levha Sac",
+    "category": "Demir-Çelik",
+    "company": "Firma 1001 San. Tic. Ltd. Şti.",
+    "amount": "931.9 kg",
+    "price": "₺ 13.58 / kg",
+    "location": "Gaziantep",
+    "status": "Yağlı-Kontamine (Gevşek)",
+    "hasCertificate": true,
+    "image": "https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=500&q=80"
+  },
+  {
+    "id": "T-00002",
+    "title": "Ekstra Hurda (Temiz)",
+    "category": "Demir-Çelik",
+    "company": "Firma 1001 San. Tic. Ltd. Şti.",
+    "amount": "1100.6 kg",
+    "price": "₺ 12.07 / kg",
+    "location": "Gaziantep",
+    "status": "Temiz (Preslenmiş-Balya)",
+    "hasCertificate": false,
+    "image": "https://images.unsplash.com/photo-1535813547-99c456a41d4a?auto=format&fit=crop&w=500&q=80"
+  },
+  {
+    "id": "T-00003",
+    "title": "Talaş / Kırpıntı (Temiz)",
+    "category": "Demir-Çelik",
+    "company": "Firma 1002 San. Tic. Ltd. Şti.",
+    "amount": "176.1 kg",
+    "price": "₺ 10.46 / kg",
+    "location": "İstanbul",
+    "status": "Temiz (Preslenmiş-Balya)",
+    "hasCertificate": true,
+    "image": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=500&q=80"
+  },
+  {
+    "id": "T-00004",
+    "title": "Ekstra Hurda (Temiz)",
+    "category": "Demir-Çelik",
+    "company": "Firma 1002 San. Tic. Ltd. Şti.",
+    "amount": "300.0 kg",
+    "price": "₺ 11.46 / kg",
+    "location": "İstanbul",
+    "status": "Temiz (Preslenmiş-Balya)",
+    "hasCertificate": false,
+    "image": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=500&q=80"
+  },
+  {
+    "id": "T-00005",
+    "title": "DKP Hurda (Temiz)",
+    "category": "Demir-Çelik",
+    "company": "Firma 1003 San. Tic. Ltd. Şti.",
+    "amount": "1349.8 kg",
+    "price": "₺ 14.26 / kg",
+    "location": "İstanbul",
+    "status": "Temiz (Parçalanmış)",
+    "hasCertificate": true,
+    "image": "https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=500&q=80"
+  },
+  {
+    "id": "T-00006",
+    "title": "Talaş / Kırpıntı (Ağır Paslı)",
+    "category": "Demir-Çelik",
+    "company": "Firma 1003 San. Tic. Ltd. Şti.",
+    "amount": "1732.2 kg",
+    "price": "₺ 8.82 / kg",
+    "location": "İstanbul",
+    "status": "Ağır Paslı (Parçalanmış)",
+    "hasCertificate": false,
+    "image": "https://images.unsplash.com/photo-1535813547-99c456a41d4a?auto=format&fit=crop&w=500&q=80"
+  },
+  {
+    "id": "T-00007",
+    "title": "Mahalle (Karışık) (Yağlı-Kontamine)",
+    "category": "Demir-Çelik",
+    "company": "Firma 1003 San. Tic. Ltd. Şti.",
+    "amount": "1100.1 kg",
+    "price": "₺ 8.30 / kg",
+    "location": "İstanbul",
+    "status": "Yağlı-Kontamine (Gevşek)",
+    "hasCertificate": true,
+    "image": "https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=500&q=80"
+  },
+  {
+    "id": "T-00008",
+    "title": "Ekstra Hurda (Temiz)",
+    "category": "Demir-Çelik",
+    "company": "Firma 1003 San. Tic. Ltd. Şti.",
+    "amount": "406.4 kg",
+    "price": "₺ 11.72 / kg",
+    "location": "İstanbul",
+    "status": "Temiz (Preslenmiş-Balya)",
+    "hasCertificate": false,
+    "image": "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=500&q=80"
+  },
+  {
+    "id": "T-00009",
+    "title": "Talaş / Kırpıntı (Ağır Paslı)",
+    "category": "Demir-Çelik",
+    "company": "Firma 1003 San. Tic. Ltd. Şti.",
+    "amount": "1765.6 kg",
+    "price": "₺ 8.51 / kg",
+    "location": "İstanbul",
+    "status": "Ağır Paslı (Parçalanmış)",
+    "hasCertificate": true,
+    "image": "https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?auto=format&fit=crop&w=500&q=80"
+  },
+  {
+    "id": "T-00010",
+    "title": "DKP Hurda (Yağlı-Kontamine)",
+    "category": "Demir-Çelik",
+    "company": "Firma 1004 San. Tic. Ltd. Şti.",
+    "amount": "992.4 kg",
+    "price": "₺ 12.94 / kg",
+    "location": "İstanbul",
+    "status": "Yağlı-Kontamine (Preslenmiş-Balya)",
+    "hasCertificate": false,
+    "image": "https://images.unsplash.com/photo-1535813547-99c456a41d4a?auto=format&fit=crop&w=500&q=80"
+  }
+]
