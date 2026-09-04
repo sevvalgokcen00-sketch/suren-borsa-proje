@@ -3,7 +3,8 @@ const path = require('path');
 const xlsx = require('xlsx');
 
 const dbPath = path.join(__dirname, 'database.sqlite');
-const excelPath = path.join(__dirname, 'Ilan_Gorsel_Eslestirme_Sistemi_v4.xlsx');
+const dataExcelPath = path.join(__dirname, 'DonguBorsa_DemirCelik_Firma_Analizi_v5.xlsx');
+const matchExcelPath = path.join(__dirname, 'Ilan_Gorsel_Eslestirme_Sistemi_v4.xlsx');
 
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
@@ -13,12 +14,24 @@ const db = new sqlite3.Database(dbPath, (err) => {
   console.log('SQLite veritabanına bağlanıldı.');
 });
 
-// Excel dosyasını ve görselli verileri oku
-const workbook = xlsx.readFile(excelPath);
-const sheet = workbook.Sheets['Ham_Veri_Gorselli'];
-const data = xlsx.utils.sheet_to_json(sheet);
+// 1. Görsel eşleştirme tablosunu oku ve harita (map) oluştur
+const matchWb = xlsx.readFile(matchExcelPath);
+const matchSheet = matchWb.Sheets['Ham_Veri_Gorselli'];
+const matchData = xlsx.utils.sheet_to_json(matchSheet);
 
-console.log(`Excel'den ${data.length} adet görselli kayıt okundu.`);
+const imageMap = {};
+matchData.forEach((row) => {
+  if (row['İşlem ID']) {
+    imageMap[row['İşlem ID']] = row['Görsel Dosya'];
+  }
+});
+
+// 2. v5 Ham Veri tablosunu oku
+const dataWb = xlsx.readFile(dataExcelPath);
+const dataSheet = dataWb.Sheets['Ham_Veri'];
+const data = xlsx.utils.sheet_to_json(dataSheet);
+
+console.log(`v5 Excel'inden ${data.length} adet kayıt okundu.`);
 
 db.serialize(() => {
   // 1. Eski tabloyu tamamen kaldır
@@ -80,9 +93,12 @@ db.serialize(() => {
       const title = `${row['Şehir']} - ${row['Alt Tür']}`;
       const desc = `${row['Firma Adı']} tarafından sunulan ${String(row['Malzeme Durumu'] || '').toLowerCase()} durumundaki ${String(row['Paketleme Biçimi'] || '').toLowerCase()} malzeme.`;
       
-      const imageName = row['Görsel Dosya'];
+      // Görseli İşlem ID üzerinden eşleştir, bulamazsa varsayılan ata
+      const islemId = row['İşlem ID'];
+      const imageName = imageMap[islemId] || 'MD-TEMIZ-01.jpg';
       const imagePath = `/uploads/${imageName}`;
       const imagesJson = JSON.stringify([imagePath]);
+
       const miktar = Number(row['Miktar (kg)']) || 0;
       const birimFiyat = Number(row['Birim Fiyat (TL/kg)']) || 0;
       const toplamTutar = Number(row['Toplam Tutar (TL)']) || (miktar * birimFiyat);
@@ -116,7 +132,7 @@ db.serialize(() => {
     });
 
     insertStmt.finalize(() => {
-      console.log('✅ 380 ilan ve tüm görseller eksiksiz şemayla veritabanına işlendi!');
+      console.log('✅ 380 ilan (v5 verileriyle) ve tüm görseller eksiksiz veritabanına işlendi!');
       db.close();
     });
   });
