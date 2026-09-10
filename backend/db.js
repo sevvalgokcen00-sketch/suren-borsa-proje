@@ -11,6 +11,8 @@ async function getDb() {
 
 async function initDb() {
   const db = await getDb();
+
+  // 1. Tablo Yapılarını Oluştur (Sıfır kurulumlar için materialType ve category eklendi)
   await db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -30,6 +32,8 @@ async function initDb() {
       user_id INTEGER,
       title TEXT NOT NULL,
       material_type TEXT NOT NULL,
+      materialType TEXT,
+      category TEXT,
       weight REAL NOT NULL,
       price REAL NOT NULL,
       city TEXT,
@@ -64,7 +68,38 @@ async function initDb() {
       recorded_date DATE
     );
   `);
+
+  // 2. DB Migration: Var olan 'listings' tablosuna eksik kolonları güvenli şekilde ekle
+  try {
+    const columns = await db.all(`PRAGMA table_info(listings)`);
+    const existingColumns = columns.map(c => c.name);
+
+    if (!existingColumns.includes('materialType')) {
+      await db.exec(`ALTER TABLE listings ADD COLUMN materialType TEXT;`);
+      console.log("✅ Migration: 'materialType' kolonu eklendi.");
+    }
+
+    if (!existingColumns.includes('category')) {
+      await db.exec(`ALTER TABLE listings ADD COLUMN category TEXT;`);
+      console.log("✅ Migration: 'category' kolonu eklendi.");
+    }
+  } catch (migErr) {
+    console.error("Migration Kontrol Hatası:", migErr.message);
+  }
+
+  // 3. UTF-8 Karakter Onarımı (Bozuk Türkçe Karakterleri Otomatik Düzelt)
+  try {
+    await db.run(`
+      UPDATE listings 
+      SET title = REPLACE(REPLACE(title, 'Gncel', 'Güncel'), 'elik', 'Çelik'),
+          material_type = REPLACE(REPLACE(material_type, 'Gncel', 'Güncel'), 'elik', 'Çelik')
+      WHERE title LIKE '%Gncel%' OR title LIKE '%elik%' OR material_type LIKE '%Gncel%' OR material_type LIKE '%elik%';
+    `);
+  } catch (utfErr) {
+    // Düzeltme esnasında bir uyarı oluşursa sunucu açılışının patlamasını engeller
+  }
 }
 
 initDb().catch(console.error);
+
 module.exports = { getDb };

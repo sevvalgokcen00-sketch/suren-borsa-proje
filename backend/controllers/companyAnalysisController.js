@@ -36,7 +36,7 @@ exports.getCompanyAnalysis = async (req, res) => {
        LIMIT 10`
     );
 
-    const companies = companiesRes.map((c) => ({
+    const companies = (companiesRes || []).map((c) => ({
       id: c.id,
       name: c.name,
       mainMaterial: c.mainMaterial || "Genel Hurda / Metal",
@@ -46,7 +46,7 @@ exports.getCompanyAnalysis = async (req, res) => {
     }));
 
     // 3. Öne Çıkan Firma (İşlem hacmi en yüksek ilk firma)
-    const topCompany = companiesRes[0];
+    const topCompany = companiesRes?.[0];
     const featuredCompany = (topCompany && topCompany.totalVolumeNum > 0) ? {
       name: topCompany.name,
       verified: true,
@@ -66,12 +66,24 @@ exports.getCompanyAnalysis = async (req, res) => {
     };
 
     // 4. Grafik 1: Firma Hacim Grafiği (Top 5 Firma)
-    const companyVolumeChart = companiesRes.slice(0, 5).map((c) => ({
+    const rawCompanyVolume = (companiesRes || []).slice(0, 5).map((c) => ({
       company: c.name,
       volume: c.totalVolumeNum >= 1000000 
         ? parseFloat((c.totalVolumeNum / 1000000).toFixed(2)) 
         : c.totalVolumeNum
     }));
+
+    // PowerShell / String format hatasına karşı koruma ve standart JSON array garantisi
+    let formattedCompanyVolume = [];
+    if (Array.isArray(rawCompanyVolume)) {
+      formattedCompanyVolume = rawCompanyVolume;
+    } else if (typeof rawCompanyVolume === 'string') {
+      try {
+        formattedCompanyVolume = JSON.parse(rawCompanyVolume);
+      } catch (e) {
+        formattedCompanyVolume = [];
+      }
+    }
 
     // 5. Grafik 2: Malzeme Dağılımı (material_type Bazlı)
     const materialDistRes = await db.all(
@@ -82,30 +94,33 @@ exports.getCompanyAnalysis = async (req, res) => {
        GROUP BY material_type`
     );
 
-    const totalWeightSum = materialDistRes.reduce((acc, curr) => acc + curr.weight, 0) || 1;
+    const totalWeightSum = (materialDistRes || []).reduce((acc, curr) => acc + curr.weight, 0) || 1;
     const colors = ["#1e6091", "#10b981", "#3b82f6", "#f59e0b", "#9ca3af"];
 
-    const materialDistributionItems = materialDistRes.map((item, index) => ({
+    const rawMaterialItems = (materialDistRes || []).map((item, index) => ({
       name: item.name,
       percentage: parseFloat(((item.weight / totalWeightSum) * 100).toFixed(1)),
       color: colors[index % colors.length]
     }));
 
-    const totalVol = totalVolumeRes.total;
+    // Frontend .map() patlamasını önlemek için kesin Dizi (Array) garantisi
+    const safeMaterialItems = Array.isArray(rawMaterialItems) ? rawMaterialItems : [];
+
+    const totalVol = totalVolumeRes?.total || 0;
     
-    // Kg -> Ton dönüşümü (Math.round yerine küsürat koruması: 500 kg = 0,5 ton)
-    const recycledTonVal = recycledMaterialRes.total / 1000;
+    // Kg -> Ton dönüşümü
+    const recycledTonVal = (recycledMaterialRes?.total || 0) / 1000;
     const recycledTonStr = recycledTonVal.toLocaleString('tr-TR', { maximumFractionDigits: 2 });
 
     const analysisData = {
       kpi: {
         totalCompanies: { 
-          raw: totalCompaniesRes.count,
-          value: totalCompaniesRes.count.toLocaleString('tr-TR')
+          raw: totalCompaniesRes?.count || 0,
+          value: (totalCompaniesRes?.count || 0).toLocaleString('tr-TR')
         },
         activeListings: { 
-          raw: activeListingsRes.count,
-          value: activeListingsRes.count.toLocaleString('tr-TR')
+          raw: activeListingsRes?.count || 0,
+          value: (activeListingsRes?.count || 0).toLocaleString('tr-TR')
         },
         totalVolume: { 
           raw: totalVol,
@@ -114,17 +129,17 @@ exports.getCompanyAnalysis = async (req, res) => {
             : `₺ ${totalVol.toLocaleString('tr-TR')}`
         },
         recycledMaterial: { 
-          raw: recycledMaterialRes.total,
+          raw: recycledMaterialRes?.total || 0,
           value: `${recycledTonStr} ton`
         }
       },
       companies,
       featuredCompany,
       charts: {
-        companyVolume: companyVolumeChart,
+        companyVolume: formattedCompanyVolume,
         materialDistribution: {
           totalWeight: `${recycledTonStr} ton`,
-          items: materialDistributionItems
+          items: safeMaterialItems
         }
       }
     };
