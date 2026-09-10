@@ -6,9 +6,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'suren-borsa-gizli-anahtar-2026';
 
 // Kullanıcı Kaydı (Register)
 exports.register = async (req, res) => {
-  const { name, email, password, company_name } = req.body;
+  const { name, fullName, email, password, company_name, companyName } = req.body;
+  const userName = name || fullName;
+  const compName = company_name || companyName;
 
-  if (!name || !email || !password) {
+  if (!userName || !email || !password) {
     return res.status(400).json({ error: "Ad, e-posta ve şifre zorunludur." });
   }
 
@@ -32,7 +34,7 @@ exports.register = async (req, res) => {
     // Kullanıcıyı veritabanına hash'lenmiş şifre ile ekle
     const result = await db.run(
       `INSERT INTO users (name, email, password, company_name) VALUES (?, ?, ?, ?)`,
-      [name, email, hashedPassword, company_name || null]
+      [userName, email, hashedPassword, compName || null]
     );
 
     res.status(201).json({

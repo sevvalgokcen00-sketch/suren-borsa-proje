@@ -34,6 +34,9 @@ const dashboardRoutes = require('./routes/dashboard');
 const homeRoutes = require('./routes/home');
 const indicesRoutes = require('./routes/indices');
 const offersRoutes = require('./routes/offers');
+const ordersRoutes = require('./routes/orders');
+const bidsRoutes = require('./routes/bids');
+const marketRoutes = require('./routes/market');
 
 // Routes (Tanımlamalar)
 app.use('/api/auth', authRoutes);
@@ -44,6 +47,9 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/home', homeRoutes);
 app.use('/api/indices', indicesRoutes);
 app.use('/api/offers', offersRoutes);
+app.use('/api/orders', ordersRoutes);
+app.use('/api/bids', bidsRoutes);
+app.use('/api/market', marketRoutes);
 
 // Veritabanı kontrolü ve sunucuyu başlatma
 getDb().then(() => {
