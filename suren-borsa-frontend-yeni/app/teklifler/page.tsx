@@ -9,12 +9,12 @@ export default function TekliflerPage() {
   const [activeTab, setActiveTab] = useState<"gelen" | "verilen" | "onaylanan">("gelen");
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Gelen Teklifler
+  // Gelen Teklifler (Demir-Çelik Sektör Terminolojisine Uyarlı)
   const [gelenTeklifler, setGelenTeklifler] = useState([
     {
       id: 101,
-      listingTitle: "10mm S235JR Levha Sac (12.500 kg)",
-      offeredBy: "AluTek Alüminyum A.Ş.",
+      listingTitle: "10mm S235JR Levha Sac Kesim Artığı (12.500 kg)",
+      offeredBy: "Firma 1005 San. Tic. Ltd. Şti.",
       offerAmount: 24500,
       marketMedian: 24000,
       totalPrice: "₺ 306.250",
@@ -28,8 +28,8 @@ export default function TekliflerPage() {
     },
     {
       id: 102,
-      listingTitle: "Granül PP Plastik Çapak (4.800 kg)",
-      offeredBy: "EcoKağıt Geri Dönüşüm A.Ş.",
+      listingTitle: "DKP Soğuk Haddelenmiş Sac Kırpıntısı (4.800 kg)",
+      offeredBy: "Firma 1012 San. Tic. Ltd. Şti.",
       offerAmount: 14000,
       marketMedian: 13500,
       totalPrice: "₺ 67.200",
@@ -47,8 +47,8 @@ export default function TekliflerPage() {
   const [verilenTeklifler, setVerilenTeklifler] = useState([
     {
       id: 201,
-      listingTitle: "Alüminyum Profil Fire (3.200 kg)",
-      ownerCompany: "AluTek A.Ş.",
+      listingTitle: "İmalat Artığı Profil ve Boru Fireleri (3.200 kg)",
+      ownerCompany: "Firma 1008 San. Tic. Ltd. Şti.",
       myOffer: 55000,
       amount: "3200",
       totalPrice: "₺ 176.000",
@@ -60,12 +60,12 @@ export default function TekliflerPage() {
     },
   ]);
 
-  // YENİ: Onaylanan İşlemlerim Listesi State'i
+  // Onaylanan İşlemlerim Listesi State'i
   const [onaylananIslemler, setOnaylananIslemler] = useState([
     {
       id: 301,
-      listingTitle: "Granül PP Plastik Çapak (4.800 kg)",
-      otherParty: "EcoKağıt Geri Dönüşüm A.Ş.",
+      listingTitle: "DKP Soğuk Haddelenmiş Sac Kırpıntısı (4.800 kg)",
+      otherParty: "Firma 1012 San. Tic. Ltd. Şti.",
       totalPrice: "₺ 67.200",
       tonnage: "4.8 Ton",
       paymentType: "30 Gün Vadeli Çek",
@@ -76,7 +76,7 @@ export default function TekliflerPage() {
     }
   ]);
 
-  // YENİ NESİL GENİŞ MÜZAKERE MODALI STATE'İ
+  // MÜZAKERE MODALI STATE'İ
   const [bidModal, setBidModal] = useState<{
     isOpen: boolean;
     mode: "yeni" | "karsi" | "guncelle";
@@ -101,7 +101,7 @@ export default function TekliflerPage() {
     note: "",
   });
 
-  // GÜVENLİ TİCARİ SÖZLEŞME VE ÖDEME KOORDİNASYON MODALI STATE'İ
+  // TİCARİ SÖZLEŞME VE ÖDEME KOORDİNASYON MODALI STATE'İ
   const [checkoutModal, setCheckoutModal] = useState<{
     isOpen: boolean;
     step: number;
@@ -141,16 +141,15 @@ export default function TekliflerPage() {
     }
   }, []);
 
-  // Finansal Hesaplamalar (2 Basamaklı Net Kuruş)
+  // Finansal Hesaplamalar
   const tonnage = Number(bidModal.amount || 0) / 1000;
   const subtotal = Number(bidModal.price || 0) * tonnage;
-  const vatAmount = subtotal * 0.20; // %20 KDV
+  const vatAmount = subtotal * 0.20; 
   const grandTotal = subtotal + vatAmount;
 
   const formatCurrency = (val: number) =>
     val.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // Hızlı indirim butonları
   const applyDiscount = (pct: number) => {
     const base = 24500;
     const discounted = Math.round(base * (1 - pct / 100));
@@ -180,7 +179,6 @@ export default function TekliflerPage() {
     }
   };
 
-  // FORMU KAYDETME
   const handleSaveBidModal = (e: React.FormEvent) => {
     e.preventDefault();
     if (!bidModal.title || !bidModal.price || !bidModal.amount) {
@@ -202,7 +200,7 @@ export default function TekliflerPage() {
       const newItem = {
         id: Date.now(),
         listingTitle: bidModal.title,
-        ownerCompany: bidModal.company || "Belirtilmemiş Firma",
+        ownerCompany: bidModal.company || "Firma 1001 San. Tic. Ltd. Şti.",
         myOffer: Number(bidModal.price),
         amount: bidModal.amount,
         totalPrice: calculatedTotal,
@@ -306,13 +304,15 @@ export default function TekliflerPage() {
                 <div className="flex items-center gap-2">
                   <Link
                     href="/giris-yap"
-                    className="bg-[#123873] hover:bg-[#0d2a56] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                    style={{ backgroundColor: "#123873" }}
+                    className="hover:opacity-90 text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
                   >
                     Giriş Yap
                   </Link>
                   <Link
                     href="/kayit-ol"
-                    className="bg-[#123873] hover:bg-[#0d2a56] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                    style={{ backgroundColor: "#123873" }}
+                    className="hover:opacity-90 text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
                   >
                     Kayıt Ol
                   </Link>
@@ -322,9 +322,9 @@ export default function TekliflerPage() {
           </div>
         </header>
 
-        {/* İÇERİK */}
-        <main className="p-6 space-y-6 overflow-y-auto">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+        {/* İÇERİK (ENİNE GENİŞLETİLDİ) */}
+        <main className="w-full px-4 md:px-8 py-8 space-y-6 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-2">
             <div>
               <h1 className="text-xl font-bold text-slate-900">Teklif ve Müzakere Terminali</h1>
               <p className="text-xs text-slate-400 mt-0.5">
@@ -339,7 +339,7 @@ export default function TekliflerPage() {
                   mode: "yeni",
                   targetId: null,
                   title: "10mm S235JR Levha Sac Kesim Artığı",
-                  company: "Döngü Metal San. A.Ş.",
+                  company: "Firma 1001 San. Tic. Ltd. Şti.",
                   price: "24000",
                   amount: "12500",
                   paymentType: "pesin",
@@ -347,31 +347,32 @@ export default function TekliflerPage() {
                   note: "",
                 })
               }
-              className="bg-[#123873] hover:bg-[#0d2a56] text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5"
+              style={{ backgroundColor: "#123873" }}
+              className="hover:opacity-90 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5"
             >
               <span>+</span> Yeni Teklif Oluştur
             </button>
           </div>
 
-          {/* TAB SEÇİMİ (3. Onaylanan Sekmesi Eklendi) */}
-          <div className="flex border-b border-slate-200 text-xs font-bold gap-6">
+          {/* TAB SEÇİMİ */}
+          <div className="flex border-b border-slate-200 text-xs font-bold gap-6 px-2">
             <button
               onClick={() => setActiveTab("gelen")}
-              className={`pb-3 border-b-2 transition ${
-                activeTab === "gelen"
-                  ? "border-[#123873] text-[#123873]"
-                  : "border-transparent text-slate-500 hover:text-slate-800"
-              }`}
+              style={{
+                borderColor: activeTab === "gelen" ? "#123873" : "transparent",
+                color: activeTab === "gelen" ? "#123873" : "#64748b"
+              }}
+              className={`pb-3 border-b-2 transition`}
             >
               📥 İlanlarıma Gelen Teklifler ({gelenTeklifler.length})
             </button>
             <button
               onClick={() => setActiveTab("verilen")}
-              className={`pb-3 border-b-2 transition ${
-                activeTab === "verilen"
-                  ? "border-[#123873] text-[#123873]"
-                  : "border-transparent text-slate-500 hover:text-slate-800"
-              }`}
+              style={{
+                borderColor: activeTab === "verilen" ? "#123873" : "transparent",
+                color: activeTab === "verilen" ? "#123873" : "#64748b"
+              }}
+              className={`pb-3 border-b-2 transition`}
             >
               📤 Verdiğim Teklifler ({verilenTeklifler.length})
             </button>
@@ -389,35 +390,35 @@ export default function TekliflerPage() {
 
           {/* TAB 1: GELEN TEKLİFLER */}
           {activeTab === "gelen" && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-              <h3 className="font-bold text-sm text-slate-900">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 w-full">
+              <h3 className="font-bold text-sm text-slate-900 px-2">
                 İlanlarına Gelen Resmi Teklifler & Ticari Müzakereler
               </h3>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-400 font-bold pb-3 uppercase text-[10px] tracking-wider">
-                      <th className="pb-3">İlan & Alıcı Firma</th>
-                      <th className="pb-3">Birim Fiyat & Piyasa Spread</th>
-                      <th className="pb-3">Teslimat & Ödeme</th>
-                      <th className="pb-3">Pazarlık Notu</th>
-                      <th className="pb-3">Geçerlilik</th>
-                      <th className="pb-3">Durum</th>
-                      <th className="pb-3 text-right">Aksiyonlar</th>
+                      <th className="pb-3 px-3">İlan & Alıcı Firma</th>
+                      <th className="pb-3 px-3">Birim Fiyat & Piyasa Spread</th>
+                      <th className="pb-3 px-3">Teslimat & Ödeme</th>
+                      <th className="pb-3 px-3">Pazarlık Notu</th>
+                      <th className="pb-3 px-3">Geçerlilik</th>
+                      <th className="pb-3 px-3">Durum</th>
+                      <th className="pb-3 px-3 text-right">Aksiyonlar</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
                     {filteredGelen.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/70 transition">
-                        <td className="py-4">
+                        <td className="py-4 px-3">
                           <p className="font-bold text-slate-900">{item.listingTitle}</p>
                           <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
                             🏢 {item.offeredBy}
                           </p>
                         </td>
 
-                        <td className="py-4">
+                        <td className="py-4 px-3">
                           <p className="font-black text-[#123873] text-sm">
                             ₺ {item.offerAmount.toLocaleString("tr-TR")} / Ton
                           </p>
@@ -432,14 +433,14 @@ export default function TekliflerPage() {
                           </span>
                         </td>
 
-                        <td className="py-4">
+                        <td className="py-4 px-3">
                           <span className="font-bold text-slate-800 block text-[11px]">
                             {item.incoterm}
                           </span>
                           <span className="text-[10px] text-slate-400">{item.paymentType}</span>
                         </td>
 
-                        <td className="py-4 max-w-xs">
+                        <td className="py-4 px-3 max-w-xs">
                           {item.buyerNote ? (
                             <button
                               onClick={() => setActiveNoteModal(item.buyerNote)}
@@ -452,18 +453,18 @@ export default function TekliflerPage() {
                           )}
                         </td>
 
-                        <td className="py-4 font-mono font-bold text-slate-600 text-[11px]">
+                        <td className="py-4 px-3 font-mono font-bold text-slate-600 text-[11px]">
                           ⏱️ {item.expiresIn}
                         </td>
 
-                        <td className="py-4">
+                        <td className="py-4 px-3">
                           {item.status === "bekleyen" && (
                             <span className="bg-amber-50 text-amber-600 px-2.5 py-1 rounded-md text-[10px] font-bold">
                               ⏳ Bekliyor
                             </span>
                           )}
                           {item.status === "onaylanan" && (
-                            <span className="bg-[#123873]/10 text-[#123873] px-2.5 py-1 rounded-md text-[10px] font-bold">
+                            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold border" style={{ backgroundColor: "rgba(18, 56, 115, 0.08)", color: "#123873", borderColor: "rgba(18, 56, 115, 0.2)" }}>
                               ✓ Onaylandı
                             </span>
                           )}
@@ -474,12 +475,13 @@ export default function TekliflerPage() {
                           )}
                         </td>
 
-                        <td className="py-4 text-right space-x-1.5">
+                        <td className="py-4 px-3 text-right space-x-1.5">
                           {item.status === "bekleyen" ? (
                             <>
                               <button
                                 onClick={() => handleUpdateGelenStatus(item.id, "onaylanan")}
-                                className="bg-[#123873] hover:bg-[#0d2a56] text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition shadow-sm"
+                                style={{ backgroundColor: "#123873" }}
+                                className="hover:opacity-90 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition shadow-sm"
                               >
                                 Onayla
                               </button>
@@ -537,39 +539,39 @@ export default function TekliflerPage() {
 
           {/* TAB 2: VERDİĞİM TEKLİFLER */}
           {activeTab === "verilen" && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-              <h3 className="font-bold text-sm text-slate-900">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 w-full">
+              <h3 className="font-bold text-sm text-slate-900 px-2">
                 Diğer Malzeme İlanlarına Verdiğiniz Resmi Teklifler
               </h3>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-400 font-bold pb-3 uppercase text-[10px] tracking-wider">
-                      <th className="pb-3">İlan Adı</th>
-                      <th className="pb-3">İlan Sahibi Firma</th>
-                      <th className="pb-3">Verdiğim Teklif</th>
-                      <th className="pb-3">Teslimat & Toplam</th>
-                      <th className="pb-3">Notum</th>
-                      <th className="pb-3">Durum</th>
-                      <th className="pb-3 text-right">Aksiyonlar</th>
+                      <th className="pb-3 px-3">İlan Adı</th>
+                      <th className="pb-3 px-3">İlan Sahibi Firma</th>
+                      <th className="pb-3 px-3">Verdiğim Teklif</th>
+                      <th className="pb-3 px-3">Teslimat & Toplam</th>
+                      <th className="pb-3 px-3">Notum</th>
+                      <th className="pb-3 px-3">Durum</th>
+                      <th className="pb-3 px-3 text-right">Aksiyonlar</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
                     {filteredVerilen.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/70 transition">
-                        <td className="py-4 font-bold text-slate-900">{item.listingTitle}</td>
-                        <td className="py-4 text-slate-600 font-semibold">🏢 {item.ownerCompany}</td>
-                        <td className="py-4 font-black text-[#123873] text-sm">
+                        <td className="py-4 px-3 font-bold text-slate-900">{item.listingTitle}</td>
+                        <td className="py-4 px-3 text-slate-600 font-semibold">🏢 {item.ownerCompany}</td>
+                        <td className="py-4 px-3 font-black text-[#123873] text-sm">
                           ₺ {item.myOffer.toLocaleString("tr-TR")} / Ton
                         </td>
-                        <td className="py-4">
+                        <td className="py-4 px-3">
                           <span className="font-black text-slate-900 block">{item.totalPrice}</span>
                           <span className="text-[10px] text-slate-400 font-semibold">
                             {item.incoterm}
                           </span>
                         </td>
-                        <td className="py-4 max-w-xs">
+                        <td className="py-4 px-3 max-w-xs">
                           <button
                             onClick={() => setActiveNoteModal(item.myNote)}
                             className="text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg text-[11px] block line-clamp-1 transition"
@@ -577,19 +579,19 @@ export default function TekliflerPage() {
                             💬 {item.myNote}
                           </button>
                         </td>
-                        <td className="py-4">
+                        <td className="py-4 px-3">
                           {item.status === "bekleyen" && (
                             <span className="bg-amber-50 text-amber-600 px-2.5 py-1 rounded-md text-[10px] font-bold">
                               ⏳ Yanıt Bekleniyor
                             </span>
                           )}
                           {item.status === "onaylanan" && (
-                            <span className="bg-[#123873]/10 text-[#123873] px-2.5 py-1 rounded-md text-[10px] font-bold">
+                            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold border" style={{ backgroundColor: "rgba(18, 56, 115, 0.08)", color: "#123873", borderColor: "rgba(18, 56, 115, 0.2)" }}>
                               ✓ Kabul Edildi
                             </span>
                           )}
                         </td>
-                        <td className="py-4 text-right space-x-2">
+                        <td className="py-4 px-3 text-right space-x-2">
                           <button
                             onClick={() =>
                               setBidModal({
@@ -632,10 +634,10 @@ export default function TekliflerPage() {
             </div>
           )}
 
-          {/* TAB 3: ONAYLANAN İŞLEMLERİM (YENİ EKLENEN SEKME) */}
+          {/* TAB 3: ONAYLANAN İŞLEMLERİM */}
           {activeTab === "onaylanan" && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
-              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 w-full">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3 px-2">
                 <div>
                   <h3 className="font-bold text-sm text-slate-900">Tamamlanan ve Mühürlenen Ticari İşlemlerim</h3>
                   <p className="text-xs text-slate-400">Platform üzerinden onayladığınız, ESG raporlarınıza işlenen tescilli hareketler</p>
@@ -645,40 +647,41 @@ export default function TekliflerPage() {
                 </span>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto w-full">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="border-b border-slate-100 text-slate-400 font-bold pb-3 uppercase text-[10px] tracking-wider">
-                      <th className="pb-3">İlan & Karşı Taraf</th>
-                      <th className="pb-3">Tonaj & Tutar</th>
-                      <th className="pb-3">Ticari Şartlar</th>
-                      <th className="pb-3">Çevresel Kazanım (ESG)</th>
-                      <th className="pb-3 text-right">Sözleşme / Belge</th>
+                      <th className="pb-3 px-3">İlan & Karşı Taraf</th>
+                      <th className="pb-3 px-3">Tonaj & Tutar</th>
+                      <th className="pb-3 px-3">Ticari Şartlar</th>
+                      <th className="pb-3 px-3">Çevresel Kazanım (ESG)</th>
+                      <th className="pb-3 px-3 text-right">Sözleşme / Belge</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
                     {onaylananIslemler.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/70 transition">
-                        <td className="py-4">
+                        <td className="py-4 px-3">
                           <p className="font-bold text-slate-900">{item.listingTitle}</p>
                           <p className="text-[11px] text-slate-500 font-semibold mt-0.5">🤝 İş Yapılan: {item.otherParty}</p>
                         </td>
-                        <td className="py-4">
+                        <td className="py-4 px-3">
                           <span className="font-black text-slate-900 block">{item.totalPrice}</span>
                           <span className="text-[10px] text-slate-400 font-semibold">{item.tonnage}</span>
                         </td>
-                        <td className="py-4">
+                        <td className="py-4 px-3">
                           <span className="font-bold text-slate-800 block text-[11px]">{item.incoterm}</span>
                           <span className="text-[10px] text-slate-400">{item.paymentType}</span>
                         </td>
-                        <td className="py-4">
+                        <td className="py-4 px-3">
                           <span className="font-bold text-emerald-600 block">🌱 {item.savedCarbon}</span>
                           <span className="text-[10px] text-slate-500">~{item.treeEquivalent}</span>
                         </td>
-                        <td className="py-4 text-right">
+                        <td className="py-4 px-3 text-right">
                           <button
                             onClick={() => alert(`"${item.listingTitle}" işlemine ait resmi sözleşme ve ESG sertifikası indiriliyor...`)}
-                            className="bg-[#123873] hover:bg-[#0d2a56] text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition shadow-sm"
+                            style={{ backgroundColor: "#123873" }}
+                            className="hover:opacity-90 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition shadow-sm"
                           >
                             📄 Sözleşme İndir
                           </button>
@@ -701,12 +704,11 @@ export default function TekliflerPage() {
         </main>
       </div>
 
-      {/* YENİ NESİL FINTECH / BORSA MÜZAKERE MODALI */}
+      {/* MÜZAKERE MODALI */}
       {bidModal.isOpen && (
         <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-4xl w-full shadow-2xl border border-slate-200 overflow-hidden max-h-[92vh] flex flex-col">
             
-            {/* MODAL HEADER */}
             <div className="px-8 py-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-[#123873]/10 text-[#123873] flex items-center justify-center text-lg font-black">
@@ -724,7 +726,6 @@ export default function TekliflerPage() {
                 </div>
               </div>
 
-              {/* ÇARPI BUTONU */}
               <button
                 onClick={() => setBidModal({ ...bidModal, isOpen: false })}
                 className="w-8 h-8 rounded-full bg-slate-200/60 hover:bg-slate-300/60 text-slate-600 font-bold text-sm flex items-center justify-center transition"
@@ -733,10 +734,8 @@ export default function TekliflerPage() {
               </button>
             </div>
 
-            {/* MODAL BODY: 2 KOLONLU FINTECH GRID */}
             <form onSubmit={handleSaveBidModal} className="p-8 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
               
-              {/* SOL 7 KOLON: İNTERAKTİF KARTLAR VE GİRDİLER */}
               <div className="lg:col-span-7 space-y-6">
                 
                 <div className="space-y-3">
@@ -837,13 +836,14 @@ export default function TekliflerPage() {
                         key={item.id}
                         type="button"
                         onClick={() => setBidModal({ ...bidModal, paymentType: item.id as any })}
-                        className={`p-3 rounded-xl border text-left transition ${
-                          bidModal.paymentType === item.id
-                            ? "border-[#123873] bg-[#123873]/10 text-[#123873] font-bold"
-                            : "border-slate-200 hover:bg-slate-50 text-slate-700"
-                        }`}
+                        style={{
+                          borderColor: bidModal.paymentType === item.id ? "#123873" : "#e2e8f0",
+                          backgroundColor: bidModal.paymentType === item.id ? "rgba(18, 56, 115, 0.08)" : "transparent",
+                          color: bidModal.paymentType === item.id ? "#123873" : "#334155"
+                        }}
+                        className={`p-3 rounded-xl border text-left transition font-bold`}
                       >
-                        <div className="font-bold">{item.title}</div>
+                        <div>{item.title}</div>
                         <div className="text-[10px] opacity-75 mt-0.5">{item.desc}</div>
                       </button>
                     ))}
@@ -863,13 +863,14 @@ export default function TekliflerPage() {
                         key={item.id}
                         type="button"
                         onClick={() => setBidModal({ ...bidModal, incoterm: item.id as any })}
-                        className={`p-3 rounded-xl border text-left transition ${
-                          bidModal.incoterm === item.id
-                            ? "border-[#123873] bg-[#123873]/10 text-[#123873] font-bold"
-                            : "border-slate-200 hover:bg-slate-50 text-slate-700"
-                        }`}
+                        style={{
+                          borderColor: bidModal.incoterm === item.id ? "#123873" : "#e2e8f0",
+                          backgroundColor: bidModal.incoterm === item.id ? "rgba(18, 56, 115, 0.08)" : "transparent",
+                          color: bidModal.incoterm === item.id ? "#123873" : "#334155"
+                        }}
+                        className={`p-3 rounded-xl border text-left transition font-bold`}
                       >
-                        <div className="font-bold">{item.title}</div>
+                        <div>{item.title}</div>
                         <div className="text-[10px] opacity-75 mt-0.5">{item.desc}</div>
                       </button>
                     ))}
@@ -891,7 +892,7 @@ export default function TekliflerPage() {
 
               </div>
 
-              {/* SAĞ 5 KOLON: LACİVERT TEMA SÖZLEŞME ÖZETİ VE VAZGEÇ */}
+              {/* SAĞ 5 KOLON: SÖZLEŞME ÖZETİ */}
               <div className="lg:col-span-5 flex flex-col justify-between bg-[#123873] text-white p-6 rounded-2xl shadow-lg space-y-6">
                 
                 <div className="space-y-5">
@@ -981,12 +982,11 @@ export default function TekliflerPage() {
         </div>
       )}
 
-      {/* GÜVENLİ TİCARİ SÖZLEŞME VE ÖDEME / KOORDİNASYON MODALI */}
+      {/* SÖZLEŞME VE ÖDEME KOORDİNASYON MODALI */}
       {checkoutModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-6 relative overflow-hidden">
             
-            {/* Üst Başlık */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
                 <h3 className="font-bold text-slate-900 text-base">DöngüBorsa Tescilli İşlem Onay Protokolü</h3>
@@ -999,7 +999,6 @@ export default function TekliflerPage() {
               </button>
             </div>
 
-            {/* Adım Göstergesi (Stepper) - 3. Adım "Onay" Olarak Güncellendi */}
             <div className="flex items-center justify-between px-2 text-xs font-bold text-slate-500">
               <span className={`${checkoutModal.step >= 1 ? "text-[#123873]" : ""}`}>1. Sözleşme</span>
               <span>→</span>
@@ -1008,11 +1007,10 @@ export default function TekliflerPage() {
               <span className={`${checkoutModal.step >= 3 ? "text-[#123873]" : ""}`}>3. Onay</span>
             </div>
 
-            {/* İÇERİK - ADIMLAR */}
             <div className="space-y-4 text-xs text-slate-600">
               {checkoutModal.step === 1 && (
                 <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                  <h4 className="font-bold text-slate-900">Endüstriyel Malzeme Satış ve Devir Sözleşmesi</h4>
+                  <h4 className="font-bold text-slate-900">Endüstriyel Demir-Çelik ve Ham Üretim Artığı Satış Sözleşmesi</h4>
                   <p className="max-h-32 overflow-y-auto text-[11px] text-slate-500 leading-relaxed pr-2">
                     İşbu protokol, DöngüBorsa platformu üzerinden eşleşen taraflar arasında gerçekleşecek olan ikincil hammadde ve üretim artığı transferine ilişkin ticari koşulları kapsar. Satıcı, malzemenin teknik özelliklerini beyan edilen formata uygun teslim etmekle yükümlüdür. Platform doğrudan ödeme havuzu işletmez; ödeme ve lojistik taraflar arasında doğrudan akdedilir.
                   </p>
@@ -1029,7 +1027,7 @@ export default function TekliflerPage() {
                   <p className="text-[11px] text-slate-500">Taraflar arası mutabakata varılan ödeme yöntemi:</p>
                   <div className="p-3 bg-white rounded-xl border border-slate-200 space-y-1">
                     <p className="font-bold text-slate-800">Seçilen Yöntem: Kurumsal Havale / EFT</p>
-                    <p className="font-mono text-[11px] text-[#123873]">Alıcı Firma IBAN: TR00 1234 5678 9012 3456 7890 12</p>
+                    <p className="font-mono text-[11px]" style={{ color: "#123873" }}>Alıcı Firma IBAN: TR00 1234 5678 9012 3456 7890 12</p>
                     <p className="text-[10px] text-slate-400">Açıklama kısmına "DöngüBorsa İşlem No" yazılması zorunludur.</p>
                   </div>
                 </div>
@@ -1054,13 +1052,10 @@ export default function TekliflerPage() {
 
               {checkoutModal.step === 4 && (
                 <div className="space-y-6 text-center py-2">
-                  
-                  {/* Başarı İkonu */}
                   <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl shadow-inner border border-emerald-100">
                     ✓
                   </div>
 
-                  {/* Başlık ve Açıklama */}
                   <div className="space-y-1">
                     <h4 className="font-black text-slate-900 text-base">
                       Ticari İşlem Başarıyla Onaylandı!
@@ -1070,10 +1065,7 @@ export default function TekliflerPage() {
                     </p>
                   </div>
 
-                  {/* ÇEVRESEL TEBRİK KARTI */}
                   <div className="bg-gradient-to-br from-emerald-900 via-slate-900 to-emerald-950 text-white p-5 rounded-2xl shadow-lg border border-emerald-800/60 relative overflow-hidden text-left space-y-3">
-                    
-                    {/* Dekoratif Işık Efekti */}
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
 
                     <div className="flex items-center gap-2">
@@ -1087,7 +1079,6 @@ export default function TekliflerPage() {
                       Bu onaylanan işlemle birlikte sıfırdan üretim yapılması engellenmiş ve doğaya salınacak karbon emisyonunun önüne geçilmiştir.
                     </p>
 
-                    {/* Kazanım Özet Kutuları */}
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <div className="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700/60">
                         <span className="text-[10px] text-slate-400 block font-semibold">Önlenen Karbon</span>
@@ -1103,12 +1094,10 @@ export default function TekliflerPage() {
                       ✓ ISO 14064 Kapsam 3 Raporunuza Otomatik İşlendi
                     </div>
                   </div>
-
                 </div>
               )}
             </div>
 
-            {/* Alt Butonlar */}
             <div className="flex items-center justify-between pt-2 border-t border-slate-100">
               {checkoutModal.step > 1 && checkoutModal.step < 4 ? (
                 <button 
@@ -1130,11 +1119,10 @@ export default function TekliflerPage() {
               ) : checkoutModal.step === 3 ? (
                 <button 
                   onClick={() => {
-                    // YENİ: Onaylandığı an Onaylanan İşlemlerim listesine ekle
                     const yeniIslem = {
                       id: Date.now(),
                       listingTitle: checkoutModal.targetItem?.listingTitle || "Endüstriyel Demir-Çelik Levha",
-                      otherParty: checkoutModal.targetItem?.offeredBy || "Döngü Metal A.Ş.",
+                      otherParty: checkoutModal.targetItem?.offeredBy || "Firma 1005 San. Tic. Ltd. Şti.",
                       totalPrice: checkoutModal.targetItem?.totalPrice || "₺ 125.000",
                       tonnage: "10.0 Ton",
                       paymentType: "Kurumsal Havale / EFT",
@@ -1154,7 +1142,7 @@ export default function TekliflerPage() {
                 <button 
                   onClick={() => {
                     setCheckoutModal({ isOpen: false, step: 1, targetItem: null });
-                    setActiveTab("onaylanan"); // Kullanıcı kapatınca direkt onaylananlar sekmesine yönlendirilsin
+                    setActiveTab("onaylanan");
                   }}
                   style={{ backgroundColor: "#123873" }}
                   className="w-full py-2.5 text-xs font-bold text-white rounded-xl shadow-md transition"
@@ -1187,7 +1175,8 @@ export default function TekliflerPage() {
             <div className="flex justify-end">
               <button
                 onClick={() => setActiveNoteModal(null)}
-                className="bg-[#123873] text-white font-bold px-5 py-2 rounded-xl text-xs"
+                style={{ backgroundColor: "#123873" }}
+                className="text-white font-bold px-5 py-2 rounded-xl text-xs"
               >
                 Kapat
               </button>

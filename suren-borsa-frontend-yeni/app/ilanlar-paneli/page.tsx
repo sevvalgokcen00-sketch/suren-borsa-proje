@@ -3,16 +3,32 @@
 import Link from "next/link";
 import { useState } from "react";
 import Sidebar from "../../components/Sidebar";
-
 import baseData from "../data/islemler.json";
 
+// Excel veri setindeki resmi ve profesyonel demir-çelik sınıflandırmaları
+const excelAltTurler = [
+  "Standart Dışı Sac / Levha",
+  "İmalat Artığı Profil",
+  "DKP (Soğuk Haddelenmiş Sac Artığı)",
+  "Kalıp Fazlası Parça",
+  "Talaş / Kırpıntı"
+];
+
+const companyList = Array.from({ length: 60 }, (_, i) => `Firma ${1001 + i} San. Tic. Ltd. Şti.`);
+const cityList = ["Adana", "Bursa", "Eskişehir", "Gaziantep", "İstanbul", "İzmir", "Kocaeli", "Konya", "Manisa", "Sakarya"];
+
 const materialsData = Array.from({ length: 391 }, (_, i) => {
-  const original: any = baseData[i % baseData.length];
+  const original: any = (baseData as any[])[i % baseData.length] || {};
   const idNumber = String(i + 1).padStart(5, '0');
   return {
     ...original,
     id: `T-${idNumber}`,
-    company: `Firma ${1000 + (i % 25)} San. Tic. Ltd. Şti.`
+    title: excelAltTurler[i % excelAltTurler.length],
+    company: companyList[i % companyList.length],
+    location: original.location || cityList[i % cityList.length],
+    hasCertificate: i % 2 === 0, 
+    amount: `${( (i * 147) % 4500 + 300 ).toLocaleString("tr-TR")} kg`,
+    price: `₺ ${((i * 1.3) % 18 + 9.5).toFixed(2)} / kg`
   };
 });
 
@@ -20,11 +36,9 @@ export default function IlanlarPaneli() {
   const [activeTab, setActiveTab] = useState<"aktif" | "benim">("aktif");
   const [filter, setFilter] = useState("Hepsi");
   
-  // Listeleri ayırıyoruz: Aktif piyasa ilanları ve bizim ilanlarımız
   const [aktifListings, setAktifListings] = useState(materialsData.slice(0, 15));
-  const [benimListings, setBenimListings] = useState(materialsData.slice(15, 20)); // Örnek kendi ilanlarımız
+  const [benimListings, setBenimListings] = useState(materialsData.slice(15, 20));
 
-  // Satır içi düzenleme state'leri
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState("");
   const [editAmount, setEditAmount] = useState("");
@@ -65,38 +79,33 @@ export default function IlanlarPaneli() {
 
           <Link 
             href="/ilan-ver" 
-            className="bg-[#1E314A] hover:bg-[#284a7a] text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm"
+            style={{ backgroundColor: "#123873" }}
+            className="hover:opacity-90 text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm"
           >
             + Yeni İlan Oluştur
           </Link>
         </header>
 
-        {/* İÇERİK */}
-        <main className="p-6 space-y-6 overflow-y-auto">
+        {/* İÇERİK (ENİNE GENİŞLETİLDİ) */}
+        <main className="w-full px-4 md:px-8 py-8 space-y-6 flex-1">
           
           {/* TABLO KARTI */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 w-full">
             
             {/* SEKMELER (TABS) */}
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div className="flex gap-6 text-xs font-bold">
                 <button
                   onClick={() => setActiveTab("aktif")}
-                  className={`pb-3 border-b-2 transition ${
-                    activeTab === "aktif"
-                      ? "border-[#1E314A] text-[#1E314A]"
-                      : "border-transparent text-slate-400 hover:text-slate-700"
-                  }`}
+                  style={{ borderColor: activeTab === "aktif" ? "#123873" : "transparent", color: activeTab === "aktif" ? "#123873" : "#94a3b8" }}
+                  className={`pb-3 border-b-2 transition`}
                 >
                   Aktif İlanlar ({aktifListings.length})
                 </button>
                 <button
                   onClick={() => setActiveTab("benim")}
-                  className={`pb-3 border-b-2 transition ${
-                    activeTab === "benim"
-                      ? "border-[#1E314A] text-[#1E314A]"
-                      : "border-transparent text-slate-400 hover:text-slate-700"
-                  }`}
+                  style={{ borderColor: activeTab === "benim" ? "#123873" : "transparent", color: activeTab === "benim" ? "#123873" : "#94a3b8" }}
+                  className={`pb-3 border-b-2 transition`}
                 >
                   Benim İlanlarım ({benimListings.length})
                 </button>
@@ -107,11 +116,8 @@ export default function IlanlarPaneli() {
                   <button
                     key={tab}
                     onClick={() => setFilter(tab)}
-                    className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-                      filter === tab
-                        ? "bg-[#1E314A] text-white"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
+                    style={{ backgroundColor: filter === tab ? "#123873" : "#f1f5f9", color: filter === tab ? "#ffffff" : "#475569" }}
+                    className={`px-3 py-1.5 rounded-lg font-semibold transition`}
                   >
                     {tab}
                   </button>
@@ -119,17 +125,17 @@ export default function IlanlarPaneli() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto w-full">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="border-b border-slate-100 text-slate-400 font-semibold pb-3">
-                    <th className="pb-3">İlan ID</th>
-                    <th className="pb-3">Malzeme Adı / Alt Tür</th>
-                    <th className="pb-3">Miktar (kg)</th>
-                    <th className="pb-3">Birim Fiyat</th>
-                    <th className="pb-3">Sertifika (3.1)</th>
-                    <th className="pb-3">Konum</th>
-                    <th className="pb-3 text-right">Eylemler</th>
+                    <th className="pb-3 px-3">İlan ID</th>
+                    <th className="pb-3 px-3">Malzeme Adı / Alt Tür</th>
+                    <th className="pb-3 px-3">Miktar (kg)</th>
+                    <th className="pb-3 px-3">Birim Fiyat</th>
+                    <th className="pb-3 px-3">Sertifika (3.1)</th>
+                    <th className="pb-3 px-3">Konum</th>
+                    <th className="pb-3 px-3 text-right">Eylemler</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
@@ -141,38 +147,38 @@ export default function IlanlarPaneli() {
                     })
                     .map((item: any) => (
                       <tr key={item.id} className="hover:bg-slate-50 transition">
-                        <td className="py-3.5 font-mono font-bold text-[#1E314A]">{item.id}</td>
-                        <td className="py-3.5 font-bold text-slate-900">{item.title}</td>
+                        <td className="py-3 px-3 font-mono font-bold" style={{ color: "#123873" }}>{item.id}</td>
+                        <td className="py-3 px-3 font-bold text-slate-900">{item.title}</td>
                         
-                        <td className="py-3.5 font-bold text-slate-800">
+                        <td className="py-3 px-3 font-bold text-slate-800">
                           {activeTab === "benim" && editingId === item.id ? (
                             <input
                               type="text"
                               defaultValue={item.amount}
                               onChange={(e) => setEditAmount(e.target.value)}
-                              className="border border-[#1E314A] bg-slate-50 px-2 py-1 rounded-lg text-xs outline-none w-24 font-bold"
+                              className="border border-[#123873] bg-slate-50 px-2 py-1 rounded-lg text-xs outline-none w-24 font-bold"
                             />
                           ) : (
                             item.amount
                           )}
                         </td>
 
-                        <td className="py-3.5 font-black text-slate-900">
+                        <td className="py-3 px-3 font-black text-slate-900">
                           {activeTab === "benim" && editingId === item.id ? (
                             <input
                               type="text"
                               defaultValue={item.price}
                               onChange={(e) => setEditPrice(e.target.value)}
-                              className="border border-[#1E314A] bg-slate-50 px-2 py-1 rounded-lg text-xs outline-none w-28 font-bold"
+                              className="border border-[#123873] bg-slate-50 px-2 py-1 rounded-lg text-xs outline-none w-28 font-bold"
                             />
                           ) : (
                             item.price
                           )}
                         </td>
 
-                        <td className="py-3.5">
+                        <td className="py-3 px-3">
                           {item.hasCertificate ? (
-                            <span className="bg-[#1E314A]/10 text-[#1E314A] text-[10px] font-bold px-2 py-0.5 rounded-md border border-[#1E314A]/20">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border" style={{ backgroundColor: "rgba(18, 56, 115, 0.1)", color: "#123873", borderColor: "rgba(18, 56, 115, 0.2)" }}>
                               ✓ Mevcut
                             </span>
                           ) : (
@@ -181,11 +187,10 @@ export default function IlanlarPaneli() {
                             </span>
                           )}
                         </td>
-                        <td className="py-3.5 text-slate-600">📍 {item.location}</td>
+                        <td className="py-3 px-3 text-slate-600">📍 {item.location}</td>
                         
-                        <td className="py-3.5 text-right space-x-1.5">
+                        <td className="py-3 px-3 text-right space-x-1.5">
                           {activeTab === "aktif" ? (
-                            /* PİYASADAKİ AKTİF İLANLAR: Görüntüle ve Teklif Ver butonları */
                             <>
                               <Link
                                 href={`/malzemeler/detay?id=${item.id.replace("T-", "")}`}
@@ -196,18 +201,19 @@ export default function IlanlarPaneli() {
 
                               <Link
                                 href={`/teklifler?ilan=${item.id}&baslik=${encodeURIComponent(item.title)}&fiyat=${String(item.price).replace(/[^0-9]/g, "") || "24500"}`}
-                                className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-2.5 py-1.5 rounded-lg transition text-[11px] inline-block shadow-sm"
+                                style={{ backgroundColor: "#123873" }}
+                                className="hover:opacity-90 text-white font-bold px-2.5 py-1.5 rounded-lg transition text-[11px] inline-block shadow-sm"
                               >
                                 Teklif Ver / Pazarlık Yap
                               </Link>
                             </>
                           ) : (
-                            /* BENİM İLANLARIM: Güncelle ve Kaldır Butonları */
                             editingId === item.id ? (
                               <>
                                 <button
                                   onClick={() => handleSaveEdit(item.id)}
-                                  className="bg-[#1E314A] hover:bg-[#284a7a] text-white font-bold px-2.5 py-1.5 rounded-lg transition text-[11px]"
+                                  style={{ backgroundColor: "#123873" }}
+                                  className="hover:opacity-90 text-white font-bold px-2.5 py-1.5 rounded-lg transition text-[11px]"
                                 >
                                   Kaydet ✓
                                 </button>

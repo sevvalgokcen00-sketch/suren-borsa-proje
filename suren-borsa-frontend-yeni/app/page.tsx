@@ -1,498 +1,96 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import SteelTickerBar from "../components/SteelTickerBar";
 
-// %100 DEMİR-ÇELİK VE METAL SEKTÖRÜNE ÖZEL GENİŞLETİLMİŞ BORSA VERİSİ
-const marketData = [
-  {
-    id: "DEM-01",
-    code: "DKP-HRD",
-    name: "Temiz Demir-Çelik Kırpıntısı (DKP - Ekstra)",
-    category: "Temiz Kırpıntı",
-    lastPrice: "11,80",
-    high: "12,10",
-    low: "11,40",
-    change: "+0,10",
-    changePercent: "+0,85%",
-    isUp: true,
-    volume: "14,2M kg",
-    txCount: 142,
-  },
-  {
-    id: "DEM-02",
-    code: "PRF-ART",
-    name: "Profil ve Levha İmalat Artığı (ST37/ST44)",
-    category: "Profil & Boru",
-    lastPrice: "13,60",
-    high: "13,90",
-    low: "13,20",
-    change: "+0,16",
-    changePercent: "+1,20%",
-    isUp: true,
-    volume: "8,5M kg",
-    txCount: 98,
-  },
-  {
-    id: "DEM-03",
-    code: "TLS-DMR",
-    name: "Demir-Çelik Talaşı (Temiz / Paslı)",
-    category: "Talaş & Toz",
-    lastPrice: "8,90",
-    high: "9,10",
-    low: "8,70",
-    change: "-0,04",
-    changePercent: "-0,45%",
-    isUp: false,
-    volume: "11,4M kg",
-    txCount: 76,
-  },
-  {
-    id: "DEM-04",
-    code: "KRN-HRD",
-    name: "Karışık / Kontamine Demir Hurda",
-    category: "Karışık Hurda",
-    lastPrice: "8,30",
-    high: "8,50",
-    low: "8,10",
-    change: "-0,07",
-    changePercent: "-0,80%",
-    isUp: false,
-    volume: "5,1M kg",
-    txCount: 41,
-  },
-  {
-    id: "DEM-05",
-    code: "S235-SAC",
-    name: "S235JR / S275JR Levha Sac Kesim Artığı",
-    category: "Sac & Levha",
-    lastPrice: "24,50",
-    high: "25,10",
-    low: "24,00",
-    change: "+0,45",
-    changePercent: "+1,85%",
-    isUp: true,
-    volume: "19,8M kg",
-    txCount: 164,
-  },
-  {
-    id: "DEM-06",
-    code: "HMB-INL",
-    name: "HME / IPE / HEB Ağır Yapı Profilleri Fire",
-    category: "Profil & Boru",
-    lastPrice: "18,20",
-    high: "18,60",
-    low: "17,90",
-    change: "+0,20",
-    changePercent: "+1,10%",
-    isUp: true,
-    volume: "7,3M kg",
-    txCount: 52,
-  },
-  {
-    id: "DEM-07",
-    code: "DMR-NVR",
-    name: "İnşaat Demir Ucu ve NPI/NPU Kesim Fireleri",
-    category: "Temiz Kırpıntı",
-    lastPrice: "14,10",
-    high: "14,40",
-    low: "13,80",
-    change: "-0,15",
-    changePercent: "-1,05%",
-    isUp: false,
-    volume: "26,1M kg",
-    txCount: 210,
-  },
-  {
-    id: "DEM-08",
-    code: "PAS-304",
-    name: "Paslanmaz Çelik Kırpıntı (304 / 316 Kalite)",
-    category: "Sac & Levha",
-    lastPrice: "42,80",
-    high: "43,50",
-    low: "41,90",
-    change: "+0,80",
-    changePercent: "+1,90%",
-    isUp: true,
-    volume: "4,9M kg",
-    txCount: 88,
-  },
-];
-
-export default function AnaSayfa() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState("");
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userStr = localStorage.getItem("user");
-    if (token && userStr) {
-      try {
-        const user = JSON.parse(userStr);
-        setIsLoggedIn(true);
-        setUserName(user.fullName || user.companyName || "Kullanıcı");
-      } catch (e) {
-        setIsLoggedIn(false);
-      }
-    }
-  }, []);
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setIsLoggedIn(false);
-    setUserName("");
-    window.location.reload();
-  };
-
-  const filteredData = marketData.filter(
-    (item) =>
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.category.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
+export default function HosgeldinizLandingPage() {
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-800 flex flex-col justify-between">
-      {/* 1. HEADER & KAYAN BORSA ŞERİDİ */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 flex items-center justify-center text-[#1E314A] text-2xl group-hover:scale-105 transition">
-              ♻️
-            </div>
-            <span className="text-xl font-black tracking-tight text-slate-900">
-              Döngü<span className="text-[#1E314A]">Borsa</span>
+    <div className="relative min-h-screen w-full flex flex-col justify-between overflow-hidden font-sans text-white">
+      
+      {/* ARKA PLAN GÖRSELİ (public/doga.jpeg) VE KARARTMA */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center filter brightness-[0.65] scale-105 transition duration-1000"
+        style={{ 
+          backgroundImage: `url('/doga.jpeg')` 
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black/80"></div>
+      </div>
+
+      {/* ÜST HEADER (NAVBAR) */}
+      <header className="relative z-10 px-8 py-6 flex items-center justify-between max-w-7xl mx-auto w-full">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center font-black text-lg tracking-wider">
+            ♻️
+          </div>
+          <div>
+            <span className="font-black text-lg tracking-wider block leading-none text-white">
+              DÖNGÜ <span className="text-white">BORSA</span>
             </span>
+            <span className="text-[9px] uppercase tracking-widest text-slate-300 font-semibold">B2B Demir-Çelik Borsası</span>
+          </div>
+        </div>
+
+        <nav className="hidden md:flex items-center gap-8 text-xs font-bold tracking-wide text-slate-200">
+          <Link href="/anasayfa" className="hover:text-white transition">BORSA PİYASASI</Link>
+          <Link href="/ilanlar-paneli" className="hover:text-white transition">İLANLAR</Link>
+          <Link href="/nasil-calisir" className="hover:text-white transition">NASIL ÇALIŞIR?</Link>
+        </nav>
+
+        <div className="flex items-center gap-3 text-xs font-bold">
+          <Link 
+            href="/anasayfa" 
+            style={{ backgroundColor: "#1E314A" }}
+            className="hover:opacity-90 text-white px-6 py-2.5 rounded-full transition shadow-lg border border-white/20"
+          >
+            BORSAYA GİRİŞ YAP →
           </Link>
-
-          <div className="flex-1 max-w-2xl flex items-center bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden p-1 focus-within:border-[#1E314A] transition">
-            <input
-              type="text"
-              placeholder="S235JR, DKP Kırpıntı, ST37 profil, talaş veya firma ara..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-4 py-1.5 text-xs text-slate-800 bg-transparent focus:outline-none font-medium"
-            />
-            <Link
-              href={`/malzemeler?ara=${encodeURIComponent(searchQuery)}`}
-              className="bg-white hover:bg-slate-100 text-[#1E314A] px-4 py-2 rounded-xl transition text-xs font-bold shrink-0"
-            >
-              🔍 Ara
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs">
-            <div className="border-l border-slate-200 pl-4 flex items-center gap-3">
-              {isLoggedIn ? (
-                <div className="flex items-center gap-3">
-                  <Link
-                    href="/gosterge-paneli"
-                    className="flex items-center gap-2 group hover:opacity-80 transition"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-[#1E314A]/10 text-[#1E314A] flex items-center justify-center font-bold text-xs border border-[#1E314A]/20">
-                      👤
-                    </div>
-                    <span className="font-bold text-slate-900">
-                      Merhaba,{" "}
-                      <span className="text-[#1E314A] group-hover:underline">
-                        {userName}
-                      </span>
-                    </span>
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="text-slate-400 hover:text-red-600 font-bold ml-2 transition"
-                    title="Çıkış Yap"
-                  >
-                    🚪 Çıkış
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/giris-yap"
-                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
-                  >
-                    Giriş Yap
-                  </Link>
-                  <Link
-                    href="/kayit-ol"
-                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
-                  >
-                    Kayıt Ol
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
         </div>
-
-        <div className="bg-slate-50 border-t border-slate-200/80">
-          <div className="max-w-7xl mx-auto px-4 flex items-center justify-between py-2.5 text-xs font-semibold overflow-x-auto">
-            <div className="flex items-center gap-5 shrink-0">
-              <Link
-                href="/gosterge-paneli"
-                className="text-slate-700 hover:text-[#1E314A] transition flex items-center gap-1.5 font-bold"
-              >
-                <span>🏠</span> Gösterge Paneli
-              </Link>
-              <Link
-                href="/firma-analizi"
-                className="text-slate-700 hover:text-[#1E314A] transition flex items-center gap-1.5 font-bold"
-              >
-                <span>📊</span> Firma Analizi
-              </Link>
-              <Link
-                href="/ilanlar-paneli"
-                className="text-slate-700 hover:text-[#1E314A] transition flex items-center gap-1.5 font-bold"
-              >
-                <span>📄</span> İlanlar
-              </Link>
-              <Link
-                href="/malzemeler"
-                className="text-slate-700 hover:text-[#1E314A] transition flex items-center gap-1.5 font-bold"
-              >
-                <span>📦</span> Malzemeler
-              </Link>
-              <Link
-                href="/teklifler"
-                className="text-slate-700 hover:text-[#1E314A] transition flex items-center gap-1.5 font-bold"
-              >
-                <span>🏷️</span> Teklifler
-              </Link>
-              <Link
-                href="/raporlar"
-                className="text-slate-700 hover:text-[#1E314A] transition flex items-center gap-1.5 font-bold"
-              >
-                <span>📈</span> Raporlar
-              </Link>
-            </div>
-
-            <Link
-              href="/ilan-ver"
-              className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-1.5 rounded-xl transition flex items-center gap-1 shrink-0 ml-4 shadow-sm"
-            >
-              <span>+</span> İlan Ver
-            </Link>
-          </div>
-        </div>
-
-        <SteelTickerBar />
       </header>
 
-      {/* 2. COMPACT HERO SECTION */}
-      <section className="bg-gradient-to-br from-slate-900 via-[#132030] to-slate-900 text-white py-14 px-4 relative overflow-hidden">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
-          <div className="space-y-4 max-w-2xl">
-            <span className="bg-[#1E314A]/40 text-[#82A8D9] border border-[#1E314A] text-[11px] font-bold px-3.5 py-1 rounded-full inline-block">
-              🦾 B2B Endüstriyel Demir-Çelik & Metal Pazaryeri
-            </span>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black leading-tight tracking-tight">
-              Atığı Değere, <br />
-              <span className="text-[#6C96CF]">
-                Kaynağı Döngüye Dönüştürün.
-              </span>
-            </h1>
-            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
-              <strong className="text-white">
-                Türkiye&apos;nin Sanayi Atık ve Geri Dönüşüm Borsa Tahtası.
-              </strong>{" "}
-              Demir-Çelik fabrikalarından arta kalan stokları ve hurda metalleri
-              şeffaf medyan endeks fiyatlarıyla anlık pazarlayın.
-            </p>
-          </div>
+      {/* ORTA HERO ALANI VE SLOGAN */}
+      <main className="relative z-10 max-w-4xl mx-auto w-full px-8 my-auto py-16 text-center space-y-8">
+        <div className="space-y-4">
+          <h1 className="text-4xl sm:text-6xl font-black tracking-tight leading-tight text-white drop-shadow-lg">
+            "Atığı Değere, <br />
+            <span className="text-emerald-400">Kaynağı Döngüye</span> Dönüştürün."
+          </h1>
 
-          <div className="flex flex-wrap items-center gap-2.5 text-xs font-black shrink-0">
-            <Link
-              href="/ilanlar-paneli"
-              className="bg-white hover:bg-slate-100 text-[#1E314A] px-5 py-3 rounded-xl shadow-lg shadow-black/20 transition"
-            >
-              Tüm İlanları İncele →
-            </Link>
-            <Link
-              href="/ilan-ver"
-              className="bg-white hover:bg-slate-100 text-[#1E314A] px-5 py-3 rounded-xl shadow-lg shadow-black/20 transition"
-            >
-              + İlan Ver
-            </Link>
-            <Link
-              href="/iletisim"
-              className="bg-white hover:bg-slate-100 text-[#1E314A] px-5 py-3 rounded-xl shadow-lg shadow-black/20 transition flex items-center gap-1.5"
-            >
-              <span>💬</span>
-              <span>İletişime Geçin</span>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. DEMİR-ÇELİK BORSA İŞLEM TAHTASI (TABLO GÖRÜNÜMÜ) */}
-      <main className="max-w-7xl mx-auto px-4 py-8 space-y-6 w-full flex-1">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-          <div>
-            <h2 className="text-lg font-black text-slate-900 flex items-center gap-2">
-              <span>📈</span> Canlı Demir-Çelik ve Metal Piyasası
-            </h2>
-          </div>
+          <p className="text-sm sm:text-base text-slate-200 font-medium max-w-2xl mx-auto leading-relaxed drop-shadow">
+            Endüstriyel metal artıklarını ve ikincil hammaddeleri dijital borsa tahtasında buluşturuyor; ISO 14064 standartlarıyla sanayide yeşil dönüşümü ve sıfır atık geleceğini inşa ediyoruz.
+          </p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-slate-400 font-bold uppercase text-[10px] tracking-wider select-none">
-                  <th className="py-3.5 px-4">İsim / Sembol</th>
-                  <th className="py-3.5 px-4 text-right">Son (Medyan)</th>
-                  <th className="py-3.5 px-4 text-right">Yüksek</th>
-                  <th className="py-3.5 px-4 text-right">Düşük</th>
-                  <th className="py-3.5 px-4 text-right">Fark</th>
-                  <th className="py-3.5 px-4 text-right">Fark %</th>
-                  <th className="py-3.5 px-4 text-right">Hacim</th>
-                  <th className="py-3.5 px-4 text-center">İşlem</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredData.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-slate-50/80 transition duration-150 group cursor-pointer"
-                  >
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-2 h-2 rounded-full bg-[#1E314A] shrink-0"></span>
-                        <div>
-                          <span className="font-bold text-slate-900 group-hover:text-[#1E314A] transition block text-sm">
-                            {item.name}
-                          </span>
-                          <span className="text-[10px] font-mono text-slate-400">
-                            {item.code} • {item.category}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
+          <Link
+            href="/anasayfa"
+            style={{ backgroundColor: "#1E314A" }}
+            className="hover:opacity-90 text-white font-bold px-8 py-4 rounded-2xl text-sm transition shadow-2xl flex items-center gap-2 border border-white/20 group"
+          >
+            <span>BORSAYA GİRİŞ YAP</span>
+            <span className="group-hover:translate-x-1 transition">→</span>
+          </Link>
 
-                    <td className="py-3.5 px-4 text-right font-black text-slate-900 text-sm font-mono">
-                      {item.lastPrice}{" "}
-                      <span className="text-[10px] font-normal text-slate-400">
-                        TL
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right font-mono text-slate-600">
-                      {item.high}
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right font-mono text-slate-600">
-                      {item.low}
-                    </td>
-
-                    <td
-                      className={`py-3.5 px-4 text-right font-bold font-mono ${
-                        item.isUp ? "text-emerald-600" : "text-red-600"
-                      }`}
-                    >
-                      {item.change}
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right">
-                      <span
-                        className={`inline-block font-bold font-mono text-[11px] px-1.5 py-0.5 rounded ${
-                          item.isUp
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-red-50 text-red-700"
-                        }`}
-                      >
-                        {item.changePercent}
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right font-mono text-slate-500">
-                      {item.volume}
-                    </td>
-
-                    <td className="py-3.5 px-4 text-center">
-                      <Link
-                        href="/ilanlar-paneli"
-                        className="bg-slate-100 hover:bg-[#1E314A] hover:text-white text-slate-700 font-bold px-3 py-1.5 rounded-lg transition text-[11px] inline-block"
-                      >
-                        İlanlar ({item.txCount})
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="bg-slate-50 px-4 py-2.5 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
-            <span>
-              📌 Fiyatlar tamamlanmış borsa işlemlerinin medyanı alınarak 15
-              dakikada bir güncellenir.
-            </span>
-            {/* İLANLAR PANELİNE YÖNLENDİRME DÜZELTİLDİ */}
-            <Link
-              href="/ilanlar-paneli"
-              className="font-bold text-[#1E314A] hover:underline"
-            >
-              Tüm Piyasayı ve İlanları Gör →
-            </Link>
-          </div>
+          <Link
+            href="/nasil-calisir"
+            className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white font-bold px-8 py-4 rounded-2xl text-sm transition border border-white/20"
+          >
+            Sistem Nasıl Çalışır?
+          </Link>
         </div>
       </main>
 
-      {/* 4. FOOTER */}
-      <footer className="bg-slate-900 text-white border-t border-slate-800 text-xs py-10 mt-12">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 flex items-center justify-center text-white text-base">
-                ♻️
-              </div>
-              <span className="text-lg font-black tracking-tight text-white">
-                Döngü<span className="text-[#729CD4]">Borsa</span>
-              </span>
-            </div>
-            <p className="text-slate-400 text-[11px] leading-relaxed">
-              B2B endüstriyel demir-çelik ve metal geri dönüşüm borsası.
-              Atıkları kaynağa dönüştürün.
-            </p>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-white mb-3">Yönetim & Paneller</h4>
-            <ul className="space-y-2 text-slate-400 text-[11px]">
-              <li><Link href="/gosterge-paneli" className="hover:text-white transition">🏠 Gösterge Paneli</Link></li>
-              <li><Link href="/firma-analizi" className="hover:text-white transition">📊 Firma Analizi</Link></li>
-              <li><Link href="/ilanlar-paneli" className="hover:text-white transition">📄 İlanlar</Link></li>
-              <li><Link href="/malzemeler" className="hover:text-white transition">📦 Malzemeler</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-white mb-3">Kurumsal</h4>
-            <ul className="space-y-2 text-slate-400 text-[11px]">
-              <li><Link href="/giris-yap" className="hover:text-white transition">Giriş Yap</Link></li>
-              <li><Link href="/kayit-ol" className="hover:text-white transition">Kayıt Ol</Link></li>
-              <li><Link href="/iletisim" className="hover:text-white transition">İletişime Geçin</Link></li>
-              <li><Link href="#" className="hover:text-white transition">Gizlilik Politikası</Link></li>
-            </ul>
-          </div>
-
-          <div>
-            <h4 className="font-bold text-white mb-3">İletişim</h4>
-            <p className="text-slate-400 text-[11px] leading-relaxed">
-              Kocaeli Sanayi Bölgesi / Türkiye<br />
-              destek@donguborsa.com
-            </p>
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 text-center text-slate-500 text-[10px] border-t border-slate-800/80 mt-8 pt-6">
-          © 2026 DöngüBorsa • Tüm Hakları Saklıdır.
+      {/* ALT FOOTER */}
+      <footer className="relative z-10 px-8 py-6 max-w-7xl mx-auto w-full flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-300 border-t border-white/10 gap-4">
+        <p>© 2026 DöngüBorsa • Tüm Hakları Saklıdır.</p>
+        <div className="flex items-center gap-6">
+          <span>Kapsam 3 Emisyon Takibi</span>
+          <span>•</span>
+          <span>Akıllı Müzakere Terminali</span>
+          <span>•</span>
+          <span>3.1 MTR Sertifikalı</span>
         </div>
       </footer>
+
     </div>
   );
 }

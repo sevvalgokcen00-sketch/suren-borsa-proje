@@ -41,11 +41,11 @@ export function calculateMVPReferencePrice(
   };
 }
 
-// MVP Borsa Veri Seti (İşlem sayısı yetersiz olan senaryo da örneklendirilmiştir)
+// MVP Borsa Veri Seti (Excel'deki resmi başlıklarla birebir eşleştirildi)
 const indexData = [
   {
     id: "DEM-01",
-    name: "Temiz Demir-Çelik Kırpıntısı",
+    name: "DKP (Soğuk Haddelenmiş Sac Artığı)",
     category: "Demir-Çelik",
     price: "11.80",
     unit: "TL/kg",
@@ -63,7 +63,7 @@ const indexData = [
   },
   {
     id: "DEM-02",
-    name: "Profil ve Levha Artığı",
+    name: "İmalat Artığı Profil",
     category: "Demir-Çelik",
     price: "13.60",
     unit: "TL/kg",
@@ -81,7 +81,7 @@ const indexData = [
   },
   {
     id: "DEM-03",
-    name: "Demir-Çelik Talaşı (Temiz/Paslı)",
+    name: "Talaş / Kırpıntı",
     category: "Demir-Çelik",
     price: "8.90",
     unit: "TL/kg",
@@ -99,7 +99,7 @@ const indexData = [
   },
   {
     id: "DEM-04",
-    name: "Karışık / Kontamine Hurda",
+    name: "Kalıp Fazlası Parça",
     category: "Demir-Çelik",
     price: "8.30",
     unit: "TL/kg",
@@ -228,7 +228,7 @@ export default function SteelPriceIndex() {
             <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
               <div className="text-emerald-400 font-black text-sm">%25 Ağırlık (Admin)</div>
               <div className="font-bold text-white mt-0.5">Manuel Dış Piyasa Verisi</div>
-              <p className="text-[10px] text-slate-400 mt-1">MVP aşamasında LME ve global hurda fiyatları yönetici panelinden manuel girilir.</p>
+              <p className="text-[10px] text-slate-400 mt-1">MVP aşamasında LME ve global metal fiyatları yönetici panelinden manuel girilir.</p>
             </div>
             <div className="bg-slate-900 p-3 rounded-xl border border-slate-800">
               <div className="text-emerald-400 font-black text-sm">%20 Ağırlık</div>
@@ -323,7 +323,7 @@ export default function SteelPriceIndex() {
                     <Sparkline data={activeChart} isUp={item.isUp} />
                   </td>
 
-                  {/* 6. Hesaplamada Kullanılan İşlem Sayısı (YENİ UYARI YAPISI) */}
+                  {/* 6. Hesaplamada Kullanılan İşlem Sayısı */}
                   <td className="py-4 px-4 text-center">
                     <span className="font-bold text-white block">
                       {item.txCount}

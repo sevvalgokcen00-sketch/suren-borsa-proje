@@ -2,8 +2,31 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Sidebar from "../../../components/Sidebar";
+import baseData from "../../data/islemler.json";
+
+// Excel ve sistem veri setine uygun sabitler
+const excelAltTurler = ["İmalat Artığı Profil", "Ekstra Hurda", "Talaş / Kırpıntı", "DKP Hurda", "Mahalle (Karışık)", "Standart Dışı Sac / Levha"];
+const companyList = Array.from({ length: 60 }, (_, i) => `Firma ${1001 + i} San. Tic. Ltd. Şti.`);
+const cityList = ["Adana", "Bursa", "Eskişehir", "Gaziantep", "İstanbul", "İzmir", "Kocaeli", "Konya", "Manisa", "Sakarya"];
+
 export default function MalzemeDetayPage() {
+  const searchParams = useSearchParams();
+  const rawId = searchParams.get("id") || "00001";
+  const numericId = parseInt(rawId.replace("T-", ""), 10) || 1;
+  const index = (numericId - 1) % baseData.length;
+  
+  const original: any = (baseData as any[])[index] || {};
+  const itemTitle = excelAltTurler[index % excelAltTurler.length];
+  const itemCompany = companyList[index % companyList.length];
+  const itemLocation = original.location || cityList[index % cityList.length];
+  const itemId = `T-${String(numericId).padStart(5, "0")}`;
+
+  // Karbon tasarrufu hesaplama (Örn: Her ton başına ~1.5 ton CO2e)
+  const estimatedKg = (numericId * 147) % 4500 + 300;
+  const carbonSavedTon = ((estimatedKg / 1000) * 1.52).toFixed(2);
+
   const [activeImage, setActiveImage] = useState(
     "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80"
   );
@@ -19,7 +42,7 @@ export default function MalzemeDetayPage() {
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* HEADER: SADECE GERİ DÖN VE BAŞLIK */}
+        {/* HEADER */}
         <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
@@ -30,18 +53,18 @@ export default function MalzemeDetayPage() {
             </Link>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono font-bold text-[#1E314A] bg-[#1E314A]/10 px-2.5 py-0.5 rounded border border-[#1E314A]/20">
-                  T-00001
+                <span className="text-[11px] font-mono font-bold text-[#123873] bg-[#123873]/10 px-2.5 py-0.5 rounded border border-[#123873]/20">
+                  {itemId}
                 </span>
-                <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2.5 py-0.5 rounded border border-blue-100">
-                  ✓ 3.1 MTR Analizli
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded border" style={{ backgroundColor: "rgba(18, 56, 115, 0.08)", color: "#123873", borderColor: "rgba(18, 56, 115, 0.2)" }}>
+                  ✓ ISO 14064 Doğrulamalı
                 </span>
                 <span className="bg-slate-100 text-slate-600 text-[10px] font-bold px-2.5 py-0.5 rounded">
-                  1. Kalite Temiz Fire
+                  1. Kalite İkincil Hammadde
                 </span>
               </div>
               <h1 className="font-bold text-slate-900 text-lg mt-1">
-                10mm S235JR Levha Sac Kesim Artığı (12.5 Ton) - Teknik Spesifikasyon Kartı
+                {itemTitle} ({estimatedKg.toLocaleString("tr-TR")} kg) - Teknik Spesifikasyon Kartı
               </h1>
             </div>
           </div>
@@ -54,7 +77,7 @@ export default function MalzemeDetayPage() {
           </Link>
         </header>
 
-        {/* ANA DETAY İÇERİĞİ: SADECE ÖZELLİKLER VE TEKNİK VERİLER */}
+        {/* ANA DETAY İÇERİĞİ */}
         <main className="p-6 overflow-y-auto max-w-5xl mx-auto w-full space-y-6">
           
           {/* 1. GÖRSEL GALERİSİ */}
@@ -71,7 +94,7 @@ export default function MalzemeDetayPage() {
                   key={idx}
                   onClick={() => setActiveImage(thumb)}
                   className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition ${
-                    activeImage === thumb ? "border-[#1E314A] scale-105" : "border-transparent opacity-70"
+                    activeImage === thumb ? "border-[#123873] scale-105" : "border-transparent opacity-70"
                   }`}
                 >
                   <img src={thumb} alt="thumb" className="w-full h-full object-cover" />
@@ -92,28 +115,43 @@ export default function MalzemeDetayPage() {
               </div>
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                 <span className="text-slate-400 block text-[11px] uppercase font-semibold">Stok Miktarı</span>
-                <strong className="text-slate-900 font-black text-sm mt-0.5 block">12.500 kg (12.5 Ton)</strong>
+                <strong className="text-slate-900 font-black text-sm mt-0.5 block">{estimatedKg.toLocaleString("tr-TR")} kg ({ (estimatedKg / 1000).toFixed(2) } Ton)</strong>
               </div>
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                 <span className="text-slate-400 block text-[11px] uppercase font-semibold">Teslimat Biçimi</span>
                 <strong className="text-slate-900 font-black text-sm mt-0.5 block">EXW - Fabrika Teslim</strong>
               </div>
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
-                <span className="text-slate-400 block text-[11px] uppercase font-semibold">Et Kalınlığı / Ebat</span>
-                <strong className="text-slate-900 font-black text-sm mt-0.5 block">10 mm (Karışık Levha)</strong>
+                <span className="text-slate-400 block text-[11px] uppercase font-semibold">Paketleme Biçimi</span>
+                <strong className="text-slate-900 font-black text-sm mt-0.5 block">Preslenmiş-Balya / Gevşek</strong>
               </div>
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                 <span className="text-slate-400 block text-[11px] uppercase font-semibold">Malzeme Durumu</span>
-                <strong className="text-slate-900 font-black text-sm mt-0.5 block">Paslanmaz / Temiz Fire</strong>
+                <strong className="text-slate-900 font-black text-sm mt-0.5 block">Temiz / Üretim Fazlası</strong>
               </div>
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                 <span className="text-slate-400 block text-[11px] uppercase font-semibold">Depo / Sahası</span>
-                <strong className="text-slate-900 font-black text-sm mt-0.5 block">📍 Gebze / Kocaeli</strong>
+                <strong className="text-slate-900 font-black text-sm mt-0.5 block">📍 {itemLocation}</strong>
               </div>
             </div>
           </div>
 
-          {/* 3. 3.1 MTR KİMYASAL BİLEŞİM VE MEKANİK ANALİZ TABLOSU */}
+          {/* 3. KURUMSAL KARBON & ÇEVRESEL ETKİ KARNESİ (TEKNOFEST VİZYONU) */}
+          <div className="p-6 rounded-2xl border space-y-3 relative overflow-hidden bg-white shadow-sm" style={{ borderColor: "rgba(18, 56, 115, 0.2)" }}>
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🌱</span>
+              <h4 className="font-black text-sm tracking-wide" style={{ color: "#123873" }}>Kurumsal Karbon & Çevresel Etki Analizi</h4>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed font-medium">
+              Bu ilandaki ikincil hammadde ve metal atıkların yeniden üretime kazandırılmasıyla, birincil cevher üretim süreçlerine kıyasla doğaya salınacak sera gazı emisyonu önlenmektedir.
+            </p>
+            <div className="p-4 rounded-xl border flex items-center justify-between" style={{ backgroundColor: "rgba(18, 56, 115, 0.03)", borderColor: "rgba(18, 56, 115, 0.15)" }}>
+              <span className="text-xs font-bold text-slate-700">Bu İlanın Sağladığı Net Karbon Tasarrufu:</span>
+              <span className="text-base font-black" style={{ color: "#123873" }}>{carbonSavedTon} Ton CO₂e</span>
+            </div>
+          </div>
+
+          {/* 4. 3.1 MTR KİMYASAL BİLEŞİM VE MEKANİK ANALİZ TABlosu */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
@@ -124,7 +162,8 @@ export default function MalzemeDetayPage() {
               </div>
               <button
                 onClick={() => alert("3.1 MTR Sertifikası (PDF) indiriliyor...")}
-                className="text-xs font-bold text-[#1E314A] bg-[#1E314A]/10 px-3 py-1.5 rounded-lg border border-[#1E314A]/20 hover:bg-[#1E314A] hover:text-white transition"
+                style={{ backgroundColor: "rgba(18, 56, 115, 0.1)", color: "#123873", borderColor: "rgba(18, 56, 115, 0.2)" }}
+                className="text-xs font-bold px-3 py-1.5 rounded-lg border transition hover:opacity-80"
               >
                 📄 Belgeyi İndir (PDF)
               </button>
@@ -149,19 +188,11 @@ export default function MalzemeDetayPage() {
                     <td className="p-3">0.035%</td>
                     <td className="p-3">0.025%</td>
                     <td className="p-3">0.025%</td>
-                    <td className="p-3 text-[#1E314A]">360 - 510 MPa</td>
+                    <td className="p-3" style={{ color: "#123873" }}>360 - 510 MPa</td>
                   </tr>
                 </tbody>
               </table>
             </div>
-          </div>
-
-          {/* 4. MALZEME SAHASI VE AÇIKLAMA */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="font-bold text-slate-900 text-sm">📝 Saha Açıklaması ve Fiziksel Durum</h3>
-            <p className="text-xs text-slate-600 leading-relaxed font-medium">
-              Malzemeler fabrikamızın lazer kesim hattından artan 1. kalite S235JR sac levhalarıdır. Pas, yağ veya kontaminasyon bulunmamaktadır. Açık sahadan vince yükleme fabrikamıza aittir; nakliye alıcı firma tarafından karşılanacaktır (EXW). Ürünler kantar teslimati ile tesise sevk edilir.
-            </p>
           </div>
 
           {/* 5. SATICI FİRMA KÜNYESİ */}
@@ -170,12 +201,12 @@ export default function MalzemeDetayPage() {
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                 İlan Sahibi Tesis
               </span>
-              <h4 className="font-bold text-slate-900 text-sm">Döngü Metal San. ve Tic. A.Ş.</h4>
-              <p className="text-xs text-slate-500">📍 Gebze Organize Sanayi Bölgesi / Kocaeli</p>
+              <h4 className="font-bold text-slate-900 text-sm">{itemCompany}</h4>
+              <p className="text-xs text-slate-500">📍 {itemLocation} Organize Sanayi Bölgesi</p>
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="bg-emerald-50 text-emerald-700 font-bold text-xs px-3 py-1.5 rounded-xl border border-emerald-200">
+              <span className="font-bold text-xs px-3 py-1.5 rounded-xl border" style={{ backgroundColor: "rgba(18, 56, 115, 0.05)", color: "#123873", borderColor: "rgba(18, 56, 115, 0.2)" }}>
                 ✓ Doğrulanmış Üretici
               </span>
               <span className="bg-slate-100 text-slate-700 font-bold text-xs px-3 py-1.5 rounded-xl">

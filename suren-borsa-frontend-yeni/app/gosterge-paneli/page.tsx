@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import baseData from "../data/islemler.json";
 
 const materialsData = Array.from({ length: 391 }, (_, i) => {
-  const original = baseData[i % baseData.length];
+  const original = (baseData as any[])[i % baseData.length];
   const idNumber = String(i + 1).padStart(5, '0');
   return { 
     ...original, 
@@ -17,6 +17,30 @@ const materialsData = Array.from({ length: 391 }, (_, i) => {
 
 export default function GostergePaneli() {
   const materials = materialsData;
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    const userStr = localStorage.getItem("user");
+    if (token && userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        setIsLoggedIn(true);
+        setUserName(user.fullName || user.companyName || "Kullanıcı");
+      } catch (e) {
+        setIsLoggedIn(false);
+      }
+    }
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setIsLoggedIn(false);
+    setUserName("");
+    window.location.reload();
+  };
 
   const [chartPeriod, setChartPeriod] = useState("30 Gün");
   const chartData = {
@@ -30,7 +54,7 @@ export default function GostergePaneli() {
     let totalVolume = 0;
     let totalValue = 0;
     
-    materials.forEach((m) => {
+    materials.forEach((m: any) => {
       const amount = parseFloat(String(m.amount).replace(/[^0-9.]/g, "")) || 0;
       const price = parseFloat(String(m.price).replace(/[^0-9.]/g, "")) || 0;
       totalVolume += amount;
@@ -52,11 +76,56 @@ export default function GostergePaneli() {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         
-        {/* HEADER */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+        {/* HEADER (Giriş Yap ve Kayıt Ol Butonları Eklendi) */}
+        <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between gap-4">
           <div>
             <h1 className="font-bold text-slate-900 text-sm">Demir-Çelik Borsa Performans ve Analiz Paneli</h1>
             <p className="text-[11px] text-slate-400">Demir-çelik hurda ve üretim fazlası stoklarının yıllık verimlilik göstergeleri</p>
+          </div>
+
+          <div className="flex items-center gap-4 text-xs">
+            <div className="border-l border-slate-200 pl-4 flex items-center gap-3">
+              {isLoggedIn ? (
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/gosterge-paneli"
+                    className="flex items-center gap-2 group hover:opacity-80 transition"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-[#1E314A]/10 text-[#1E314A] flex items-center justify-center font-bold text-xs border border-[#1E314A]/20">
+                      👤
+                    </div>
+                    <span className="font-bold text-slate-900">
+                      Merhaba,{" "}
+                      <span className="text-[#1E314A] group-hover:underline">
+                        {userName}
+                      </span>
+                    </span>
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="text-slate-400 hover:text-red-600 font-bold ml-2 transition"
+                    title="Çıkış Yap"
+                  >
+                    🚪 Çıkış
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/giris-yap"
+                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                  >
+                    Giriş Yap
+                  </Link>
+                  <Link
+                    href="/kayit-ol"
+                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                  >
+                    Kayıt Ol
+                  </Link>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -73,25 +142,25 @@ export default function GostergePaneli() {
               { title: "Ekonomiye Kazandırılan", val: analytics.recycledMaterial, unit: "Ton", desc: "♻️ Net Demir-Çelik Kazanımı" },
             ].map((card, idx) => (
               <div key={idx} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-1 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-[#123873]/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
+                <div className="absolute top-0 right-0 w-24 h-24 bg-[#1E314A]/5 rounded-full blur-2xl -mr-6 -mt-6"></div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{card.title}</p>
                 <div className="text-2xl font-black text-slate-900">{card.val} <span className="text-sm font-bold text-slate-400">{card.unit}</span></div>
-                <p style={{ color: "#123873" }} className="font-bold text-[11px] pt-1">{card.desc}</p>
+                <p style={{ color: "#1E314A" }} className="font-bold text-[11px] pt-1">{card.desc}</p>
               </div>
             ))}
           </div>
 
-          {/* BORSA EKRANI VE FIRSATLAR (DENGELİ 12'Lİ GRID YAPI) */}
+          {/* BORSA EKRANI VE FIRSATLAR */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            {/* ---------------- SOL SÜTUN (Grafikler ve Fırsatlar) - 7 Kolon Genişliği ---------------- */}
+            {/* SOL SÜTUN */}
             <div className="flex flex-col gap-6 lg:col-span-7">
               
               {/* 1. PİYASA FİYAT ENDEKSİ */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-bold text-sm text-slate-900">Piyasa Fiyat Endeksi</h3>
-                  <span className="text-[10px] font-bold text-[#123873] bg-[#123873]/10 px-2.5 py-1 rounded-md">Canlı Veri</span>
+                  <span className="text-[10px] font-bold text-[#1E314A] bg-[#1E314A]/10 px-2.5 py-1 rounded-md">Canlı Veri</span>
                 </div>
                 
                 <div className="h-24 w-full bg-slate-50 rounded-xl border border-slate-100 flex items-end px-2 pb-2 space-x-1 relative overflow-hidden">
@@ -99,7 +168,7 @@ export default function GostergePaneli() {
                   {chartData[chartPeriod as keyof typeof chartData].map((h, i) => (
                     <div 
                       key={i} 
-                      className="flex-1 bg-gradient-to-t from-[#123873]/80 to-[#123873]/30 rounded-t-sm transition-all duration-500 hover:opacity-75 cursor-pointer" 
+                      className="flex-1 bg-gradient-to-t from-[#1E314A]/80 to-[#1E314A]/30 rounded-t-sm transition-all duration-500 hover:opacity-75 cursor-pointer" 
                       style={{ height: `${h}%` }}
                     ></div>
                   ))}
@@ -112,8 +181,8 @@ export default function GostergePaneli() {
                       onClick={() => setChartPeriod(period)}
                       className={`transition px-3 py-1 rounded-lg ${
                         chartPeriod === period 
-                          ? "text-white bg-[#123873] shadow-sm" 
-                          : "hover:text-[#123873]"
+                          ? "text-white bg-[#1E314A] shadow-sm" 
+                          : "hover:text-[#1E314A]"
                       }`}
                     >
                       {period}
@@ -122,9 +191,8 @@ export default function GostergePaneli() {
                 </div>
               </div>
 
-              {/* 2. 🔥 FIRSAT ÜRÜNLERİ (Kırmızı Etiketli & Dikkat Çekici) */}
+              {/* 2. FIRSAT ÜRÜNLERİ */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Fırsat 1 */}
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between group hover:shadow-md transition">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-red-50/60 rounded-full blur-3xl -mr-8 -mt-8"></div>
                   <div className="relative z-10">
@@ -145,13 +213,12 @@ export default function GostergePaneli() {
                     </p>
                   </div>
                   <div className="mt-5 relative z-10">
-                    <Link href="/ilanlar-paneli" className="block text-center text-[11px] font-bold text-white bg-[#123873] hover:bg-[#0d2a56] py-2.5 rounded-xl transition shadow-sm">
+                    <Link href="/ilanlar-paneli" className="block text-center text-[11px] font-bold text-white bg-[#1E314A] hover:bg-[#152336] py-2.5 rounded-xl transition shadow-sm">
                       İlanı İncele →
                     </Link>
                   </div>
                 </div>
 
-                {/* Fırsat 2 */}
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between group hover:shadow-md transition">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-red-50/60 rounded-full blur-3xl -mr-8 -mt-8"></div>
                   <div className="relative z-10">
@@ -172,7 +239,7 @@ export default function GostergePaneli() {
                     </p>
                   </div>
                   <div className="mt-5 relative z-10">
-                    <Link href="/ilanlar-paneli" className="block text-center text-[11px] font-bold text-white bg-[#123873] hover:bg-[#0d2a56] py-2.5 rounded-xl transition shadow-sm">
+                    <Link href="/ilanlar-paneli" className="block text-center text-[11px] font-bold text-white bg-[#1E314A] hover:bg-[#152336] py-2.5 rounded-xl transition shadow-sm">
                       İlanı İncele →
                     </Link>
                   </div>
@@ -181,7 +248,7 @@ export default function GostergePaneli() {
 
             </div>
 
-            {/* ---------------- SAĞ SÜTUN (Özet ve Metrikler) - 5 Kolon Genişliği ---------------- */}
+            {/* SAĞ SÜTUN */}
             <div className="flex flex-col gap-6 lg:col-span-5">
               
               {/* 1. PİYASA ÖZETİ */}
@@ -192,17 +259,17 @@ export default function GostergePaneli() {
                 <div className="space-y-2.5">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">📈</span>
-                    <span className="font-black text-sm" style={{ color: "#123873" }}>Pozitif Seyir</span>
+                    <span className="font-black text-sm" style={{ color: "#1E314A" }}>Pozitif Seyir</span>
                   </div>
                   <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-                    Demir-çelik piyasasında son 24 saatte ortalama fiyatlar <span className="font-bold" style={{ color: "#123873" }}>%3,8 yükseldi</span>. DKP hurda ve profil ürünlerinde sanayi kaynaklı güçlü bir talep artışı gözlemleniyor.
+                    Demir-çelik piyasasında son 24 saatte ortalama fiyatlar <span className="font-bold" style={{ color: "#1E314A" }}>%3,8 yükseldi</span>. DKP hurda ve profil ürünlerinde sanayi kaynaklı güçlü bir talep artışı gözlemleniyor.
                   </p>
                   <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100 mt-2 text-[10px] font-bold">
-                    <div className="flex flex-col items-center"><span className="text-slate-400">Talep</span><span className="text-xs" style={{ color: "#123873" }}>↑ %12</span></div>
+                    <div className="flex flex-col items-center"><span className="text-slate-400">Talep</span><span className="text-xs" style={{ color: "#1E314A" }}>↑ %12</span></div>
                     <div className="w-px h-6 bg-slate-200"></div>
-                    <div className="flex flex-col items-center"><span className="text-slate-400">Fiyat</span><span className="text-xs" style={{ color: "#123873" }}>↑ %3,8</span></div>
+                    <div className="flex flex-col items-center"><span className="text-slate-400">Fiyat</span><span className="text-xs" style={{ color: "#1E314A" }}>↑ %3,8</span></div>
                     <div className="w-px h-6 bg-slate-200"></div>
-                    <div className="flex flex-col items-center"><span className="text-slate-400">İşlem</span><span className="text-xs" style={{ color: "#123873" }}>↑ %8,4</span></div>
+                    <div className="flex flex-col items-center"><span className="text-slate-400">İşlem</span><span className="text-xs" style={{ color: "#1E314A" }}>↑ %8,4</span></div>
                   </div>
                 </div>
               </div>
@@ -230,7 +297,7 @@ export default function GostergePaneli() {
                 </div>
               </div>
 
-              {/* 3. ARZ / TALEP DENGESİ & İŞLEM HACMİ */}
+              {/* 3. ARZ / TALEP DENGESİ */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">Arz / Talep & İşlem Hacmi</h3>
                 
@@ -239,10 +306,10 @@ export default function GostergePaneli() {
                     <div>
                       <div className="flex justify-between mb-1 text-[11px] font-bold">
                         <span className="text-slate-600">Piyasa Arzı</span>
-                        <span className="text-[#123873]">%68</span>
+                        <span className="text-[#1E314A]">%68</span>
                       </div>
                       <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                        <div className="h-full bg-[#123873] rounded-full" style={{width: '68%'}}></div>
+                        <div className="h-full bg-[#1E314A] rounded-full" style={{width: '68%'}}></div>
                       </div>
                     </div>
                     <div>

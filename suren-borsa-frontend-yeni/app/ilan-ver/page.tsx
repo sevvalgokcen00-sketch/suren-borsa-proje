@@ -13,12 +13,10 @@ const turkeyData = (turkeyDataModule as any).default || (turkeyDataModule as any
 const PROVINCES_MAP: { [key: string]: string[] } = (() => {
   if (!turkeyData) return { "Kocaeli": ["Gebze", "İzmit"] };
   
-  // Eğer doğrudan {"Adana": ["Ceyhan", ...]} formatında bir nesneyse
   if (!Array.isArray(turkeyData) && typeof turkeyData === "object") {
     return turkeyData as { [key: string]: string[] };
   }
   
-  // Eğer [{ il: "Adana", ilceler: ["Ceyhan", ...] }, ...] formatında bir diziyse
   if (Array.isArray(turkeyData)) {
     const map: { [key: string]: string[] } = {};
     turkeyData.forEach((item: any) => {
@@ -33,7 +31,6 @@ const PROVINCES_MAP: { [key: string]: string[] } = (() => {
 })();
 
 export default function IlanVer() {
-  // 1. Form State Tanımları
   const [materialType, setMaterialType] = useState("Temiz Demir-Çelik Kırpıntısı");
   const [usageStatus, setUsageStatus] = useState("0 / Üretim Fazlası (Orijinal Stok)");
   const [purity, setPurity] = useState("98");
@@ -44,7 +41,6 @@ export default function IlanVer() {
   const [packaging, setPackaging] = useState("Preslenmiş / Balya");
   const [amount, setAmount] = useState("1000");
   
-  // ŞEHİR VE İLÇE STATE'LERİ
   const provinceNames = Object.keys(PROVINCES_MAP).sort((a, b) => a.localeCompare(b, 'tr'));
   const defaultProvince = provinceNames.includes("Kocaeli") ? "Kocaeli" : (provinceNames[0] || "Kocaeli");
   
@@ -55,7 +51,6 @@ export default function IlanVer() {
   
   const [userPrice, setUserPrice] = useState("13.40");
 
-  // İl değiştiğinde ilçeyi o ilin ilk ilçesine atayan fonksiyon
   const handleProvinceChange = (newProvince: string) => {
     setSelectedProvince(newProvince);
     const districts = PROVINCES_MAP[newProvince];
@@ -66,10 +61,9 @@ export default function IlanVer() {
     }
   };
 
-  // 2. Dinamik Referans Fiyat & Aralığı Hesaplama Motoru (MVP Medyan & Eşik Kontrolü)
   const priceGuidance = useMemo(() => {
     let baseRef = 11.80;
-    let completedTxCount = 142; // Varsayılan yeterli medyan işlem sayısı
+    let completedTxCount = 142;
 
     if (materialType === "Profil ve Levha Artığı") {
       baseRef = 13.60;
@@ -81,17 +75,15 @@ export default function IlanVer() {
     }
     if (materialType === "Karışık / Kontamine Hurda") {
       baseRef = 8.30;
-      completedTxCount = 3; // EŞİK ALTI (MVP Kuralı: < 5 işlem) -> Yetersiz Veri / Admin Uyarısı tetiklenecek
+      completedTxCount = 3;
     }
 
     let qualityBonus = 0;
     
-    // Kullanım Durumu Çarpanı
     if (usageStatus.includes("0 / Üretim Fazlası")) qualityBonus += 0.50;
     if (usageStatus.includes("2. El / Çıkma")) qualityBonus -= 0.40;
     if (usageStatus.includes("Hurda / Geri Dönüşüm")) qualityBonus -= 0.70;
 
-    // Diğer Kalite Kriterleri
     if (contamination.includes("Temiz")) qualityBonus += 0.30;
     if (rustLevel.includes("Pas Yok")) qualityBonus += 0.20;
     if (packaging.includes("Preslenmiş")) qualityBonus += 0.25;
@@ -111,25 +103,21 @@ export default function IlanVer() {
       minPrice: minRec,
       maxPrice: maxRec,
       diffPercent: Number(diffPercent),
-      isSufficientData: completedTxCount >= 5, // 5 ve üzeri tamamlanmış işlem kontrolü
+      isSufficientData: completedTxCount >= 5,
       txCount: completedTxCount,
     };
   }, [materialType, usageStatus, contamination, rustLevel, packaging, userPrice]);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] font-sans flex text-slate-800">
-      {/* SOL MENÜ */}
       <Sidebar />
 
-      {/* SAĞ İÇERİK ALANI */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* HEADER */}
         <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between">
           <div>
             <h1 className="font-bold text-slate-900 text-sm">Yeni Malzeme İlanı Oluştur</h1>
             <p className="text-[11px] text-slate-400">Atık ve fazla stoklarınızı borsa endeksli referans fiyatlarla satışa çıkarın</p>
           </div>
-          {/* İPTAL BUTONU: Doğrudan ilanlar-paneli sayfasına yönlendirir */}
           <Link
             href="/ilanlar-paneli"
             className="text-xs font-bold text-slate-500 hover:text-slate-800 transition"
@@ -138,7 +126,6 @@ export default function IlanVer() {
           </Link>
         </header>
 
-        {/* ANA FORM ALANI */}
         <main className="p-6 overflow-y-auto max-w-5xl mx-auto w-full space-y-6">
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -149,14 +136,13 @@ export default function IlanVer() {
                 1. Malzeme Fiziksel & Kalite Kriterleri
               </h2>
 
-              {/* Malzeme Türü ve Kullanım Durumu */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Malzeme Türü</label>
                   <select
                     value={materialType}
                     onChange={(e) => setMaterialType(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-emerald-500 transition cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-[#123873] transition cursor-pointer"
                   >
                     <option value="Temiz Demir-Çelik Kırpıntısı">Temiz Demir-Çelik Kırpıntısı</option>
                     <option value="Profil ve Levha Artığı">Profil ve Levha Artığı</option>
@@ -170,7 +156,7 @@ export default function IlanVer() {
                   <select
                     value={usageStatus}
                     onChange={(e) => setUsageStatus(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-emerald-500 transition cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-[#123873] transition cursor-pointer"
                   >
                     <option value="0 / Üretim Fazlası (Orijinal Stok)">0 / Üretim Fazlası (Orijinal Stok)</option>
                     <option value="Az Kullanılmış / İkincil İşleme Uygun">Az Kullanılmış / İkincil İşleme Uygun</option>
@@ -180,7 +166,6 @@ export default function IlanVer() {
                 </div>
               </div>
 
-              {/* Saflık & Kirlilik Durumu */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Saflık Oranı (%)</label>
@@ -189,7 +174,7 @@ export default function IlanVer() {
                     value={purity}
                     onChange={(e) => setPurity(e.target.value)}
                     placeholder="Örn: 98"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-[#123873]"
                   />
                 </div>
                 <div className="space-y-1">
@@ -197,7 +182,7 @@ export default function IlanVer() {
                   <select
                     value={contamination}
                     onChange={(e) => setContamination(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-[#123873] cursor-pointer"
                   >
                     <option value="Temiz (Yağsız-Kontaminesiz)">Temiz (Yağsız-Kontaminesiz)</option>
                     <option value="Hafif Yağlı / Kesme Sıvılı">Hafif Yağlı / Kesme Sıvılı</option>
@@ -206,14 +191,13 @@ export default function IlanVer() {
                 </div>
               </div>
 
-              {/* Pas & Nem Seviyesi */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Pas Durumu</label>
                   <select
                     value={rustLevel}
                     onChange={(e) => setRustLevel(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-[#123873] cursor-pointer"
                   >
                     <option value="Pas Yok / Hafif Yüzey Pasa">Pas Yok / Hafif Yüzey Pası</option>
                     <option value="Orta Derece Paslı">Orta Derece Paslı</option>
@@ -225,7 +209,7 @@ export default function IlanVer() {
                   <select
                     value={moisture}
                     onChange={(e) => setMoisture(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-[#123873] cursor-pointer"
                   >
                     <option value="Kuru (%0-2 Nem)">Kuru (%0-2 Nem)</option>
                     <option value="Nemli (%3-5)">Nemli (%3-5)</option>
@@ -234,14 +218,13 @@ export default function IlanVer() {
                 </div>
               </div>
 
-              {/* Fiziksel Form & Paketleme */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Fiziksel Form</label>
                   <select
                     value={physicalForm}
                     onChange={(e) => setPhysicalForm(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-[#123873] cursor-pointer"
                   >
                     <option value="Parçalanmış / Kırpıntı">Parçalanmış / Kırpıntı</option>
                     <option value="Levha / Sac Kesim Artığı">Levha / Sac Kesim Artığı</option>
@@ -254,7 +237,7 @@ export default function IlanVer() {
                   <select
                     value={packaging}
                     onChange={(e) => setPackaging(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-[#123873] cursor-pointer"
                   >
                     <option value="Preslenmiş / Balya">Preslenmiş / Balya</option>
                     <option value="Dökme / Serbest Yükleme">Dökme / Serbest Yükleme</option>
@@ -264,25 +247,23 @@ export default function IlanVer() {
                 </div>
               </div>
 
-              {/* Miktar */}
               <div className="pt-1">
                 <label className="text-xs font-bold text-slate-700">Miktar / Stok (kg)</label>
                 <input
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-emerald-500 mt-1"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-[#123873] mt-1"
                 />
               </div>
 
-              {/* TURKEYDATA.TS'DEN GELEN 81 İL VE İLÇE SEÇİMİ */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-100">
                 <div className="space-y-1">
                   <label className="text-xs font-bold text-slate-700">Şehir (İl)</label>
                   <select
                     value={selectedProvince}
                     onChange={(e) => handleProvinceChange(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-[#123873] cursor-pointer"
                   >
                     {provinceNames.map((province) => (
                       <option key={province} value={province}>
@@ -297,7 +278,7 @@ export default function IlanVer() {
                   <select
                     value={selectedDistrict}
                     onChange={(e) => setSelectedDistrict(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-emerald-500 cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium outline-none focus:border-[#123873] cursor-pointer"
                   >
                     {(PROVINCES_MAP[selectedProvince] || ["Merkez"]).map((district) => (
                       <option key={district} value={district}>
@@ -313,7 +294,6 @@ export default function IlanVer() {
             {/* SAĞ 5 KOLON - DİNAMİK REFERANS FİYAT VE KARŞILAŞTIRMA REHBERİ */}
             <div className="lg:col-span-5 space-y-4">
               
-              {/* İlan Fiyatı Giriş Kutu */}
               <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
                 <h2 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-2">
                   2. Satış Fiyatınızı Belirleyin
@@ -328,7 +308,7 @@ export default function IlanVer() {
                       step="0.10"
                       value={userPrice}
                       onChange={(e) => setUserPrice(e.target.value)}
-                      className="w-full bg-emerald-50/50 border border-emerald-300 rounded-xl px-4 py-3 text-lg font-black text-slate-900 outline-none focus:border-emerald-600 transition"
+                      className="w-full bg-blue-50/40 border border-blue-200 rounded-xl px-4 py-3 text-lg font-black text-slate-900 outline-none focus:border-[#123873] transition"
                     />
                     <span className="absolute right-4 top-3.5 text-xs font-bold text-slate-400">
                       TL / kg
@@ -351,7 +331,6 @@ export default function IlanVer() {
                   </span>
                 </div>
 
-                {/* MVP Yetersiz Veri / Medyan Bilgilendirme Rozeti */}
                 {!priceGuidance.isSufficientData ? (
                   <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl flex items-center gap-2.5 text-amber-300 text-xs">
                     <span className="text-base">⚠️</span>
@@ -369,7 +348,6 @@ export default function IlanVer() {
                   </div>
                 )}
 
-                {/* Ana Sayısal Özetler */}
                 <div className="grid grid-cols-2 gap-3 bg-slate-800/60 p-3.5 rounded-xl border border-slate-700/60 text-center">
                   <div className="border-r border-slate-700/60 pr-2">
                     <span className="text-[10px] text-slate-400 block font-medium">
@@ -390,7 +368,6 @@ export default function IlanVer() {
                   </div>
                 </div>
 
-                {/* Dinamik Karşılaştırma Cümlesi */}
                 <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-slate-300">Piyasa Analiz Özeti:</span>
@@ -428,19 +405,18 @@ export default function IlanVer() {
                   </p>
                 </div>
 
-                {/* Alt Bilgi */}
                 <p className="text-[10px] text-slate-400 leading-normal">
                   * Önerilen aralık; seçili kullanım durumu ({usageStatus.split("/")[0].trim()}), konum ({selectedProvince}), kirlilik, pas ve paketleme durumuna göre algoritmik olarak optimize edilmiştir.
                 </p>
 
-                {/* İlanı Yayınla Butonu: Artık tıklandığında ilanlar-paneli sayfasına yönlendirir */}
                 <button
                   type="button"
                   onClick={() => {
                     alert(`${selectedProvince}, ${selectedDistrict} konumlu ilanınız referans fiyatlarla yayına alındı!`);
                     window.location.href = "/ilanlar-paneli";
                   }}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 rounded-xl text-xs transition shadow-lg shadow-emerald-600/30 block text-center"
+                  style={{ backgroundColor: "#123873" }}
+                  className="hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-xs transition shadow-lg block text-center w-full"
                 >
                   ✓ İlanı Yayınla ve Alıcılarla Eşleş
                 </button>

@@ -6,9 +6,24 @@ import Sidebar from "../../components/Sidebar";
 import SteelPriceIndex from "../../components/SteelPriceIndex";
 import baseData from "../data/islemler.json";
 
-// Excel'deki verilerden alınan sabitler (Şehirler alfabetik sıralı eklendi)
-const excelAltTurler = ["İmalat Artığı Profil", "Ekstra Hurda", "Talaş / Kırpıntı", "DKP Hurda", "Mahalle (Karışık)", "1.Grup Hurda"];
-const materialConditions = ["Temiz", "Yağlı-Kontamine", "Ağır Paslı", "Yabancı Madde İçeriyor"];
+// Excel Dosyasındaki (Ham_Veri) Resmi Demir-Çelik ve İşlenmemiş Üretim Artığı Sınıflandırmaları
+const excelAltTurler = [
+  "Standart Dışı Sac / Levha",
+  "İmalat Artığı Profil",
+  "DKP (Soğuk Haddelenmiş Sac Artığı)",
+  "Kalıp Fazlası Parça",
+  "Talaş / Kırpıntı"
+];
+
+// Excel Dosyasındaki Resmi Malzeme Durumları (Kondisyonlar)
+const materialConditions = [
+  "Üretim Fazlası",
+  "Kesim/İşleme Artığı",
+  "Temiz",
+  "Orijinal Ambalajında Fazla Stok",
+  "Standart Dışı Üretim"
+];
+
 const packagingTypes = ["Gevşek", "Preslenmiş-Balya", "Parçalanmış"]; 
 const companyList = Array.from({ length: 60 }, (_, i) => `Firma ${1001 + i} San. Tic. Ltd. Şti.`);
 const cityList = ["Adana", "Bursa", "Eskişehir", "Gaziantep", "İstanbul", "İzmir", "Kocaeli", "Konya", "Manisa", "Sakarya"];
@@ -31,14 +46,12 @@ export default function Malzemeler() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showIndex, setShowIndex] = useState(true);
 
-  // 1. KULLANICININ EKRANDA SEÇTİĞİ (ANCAK HENÜZ UYGULAMADIĞI) DEĞERLER
   const [selectedMaterialType, setSelectedMaterialType] = useState("Hepsi");
   const [selectedCompany, setSelectedCompany] = useState("Hepsi");
   const [selectedCondition, setSelectedCondition] = useState("Hepsi");
   const [selectedCity, setSelectedCity] = useState("Hepsi");
   const [selectedPackaging, setSelectedPackaging] = useState("Hepsi");
 
-  // 2. FİLTRELE BUTONUNA BASILINCA KULLANILACAK OLAN AKTİF FİLTRELER
   const [appliedFilters, setAppliedFilters] = useState({
     materialType: "Hepsi",
     company: "Hepsi",
@@ -49,7 +62,6 @@ export default function Malzemeler() {
 
   const materials = Array.isArray(materialsData) ? materialsData : [];
 
-  // FİLTRELEME MANTIĞI (appliedFilters üzerinden çalışır)
   const filteredMaterials = materials.filter((item: any) => {
     const matchesMaterial = appliedFilters.materialType === "Hepsi" || item.title === appliedFilters.materialType;
     const matchesCompany = appliedFilters.company === "Hepsi" || item.company === appliedFilters.company;
@@ -60,7 +72,6 @@ export default function Malzemeler() {
     return matchesMaterial && matchesCompany && matchesCondition && matchesPackaging && matchesCity;
   });
 
-  // BUTONA BASILDIĞINDA SEÇİMLERİ UYGULAYAN FONKSİYON
   const handleApplyFilters = () => {
     setAppliedFilters({
       materialType: selectedMaterialType,
@@ -71,7 +82,6 @@ export default function Malzemeler() {
     });
   };
 
-  // FİLTRELERİ SIFIRLAMA FONKSİYONU
   const handleClearFilters = () => {
     setSelectedMaterialType("Hepsi");
     setSelectedCompany("Hepsi");
@@ -127,13 +137,13 @@ export default function Malzemeler() {
           </div>
         </header>
 
-        {/* ANA MALZEMELER İÇERİĞİ */}
-        <main className="p-6 space-y-6 overflow-y-auto max-w-7xl mx-auto w-full">
+        {/* ANA MALZEMELER İÇERİĞİ (ENİNE GENİŞLETİLDİ) */}
+        <main className="w-full px-4 md:px-8 py-8 space-y-6 flex-1">
           
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-500">
-                📈 Canlı Referans Fiyat Endeksi
+                📈 Medyan Referans Fiyat Endeksi
               </span>
               <button onClick={() => setShowIndex(!showIndex)} className="text-xs text-[#1E314A] font-bold hover:underline">
                 {showIndex ? "▲ Endeksi Gizle" : "▼ Piyasa Endeksini Göster"}
@@ -148,7 +158,7 @@ export default function Malzemeler() {
                 Demir-Çelik Malzeme Kataloğu ({filteredMaterials.length} Sonuç)
               </h1>
               <p className="text-xs text-slate-400 mt-0.5">
-                Fabrikalardan arta kalan stokları seçtiğiniz filtrelere göre listeliyoruz.
+                Fabrikalardan arta kalan işlenmemiş ham üretim artığı ve kesim firelerini filtrelere göre listeliyoruz.
               </p>
             </div>
 
@@ -157,11 +167,9 @@ export default function Malzemeler() {
             </Link>
           </div>
 
-          {/* 🔍 GELİŞMİŞ VE MANÜEL UYGULAMALI FİLTRELEME ÇUBUĞU */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
-            
+          {/* 🔍 FİLTRELEME ÇUBUĞU */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4 w-full">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                   Malzeme Tipi / İlan Adı
@@ -203,11 +211,9 @@ export default function Malzemeler() {
                   {packagingTypes.map(pack => <option key={pack} value={pack}>{pack}</option>)}
                 </select>
               </div>
-
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-100 pt-4 items-end">
-              
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
                   Malzeme Durumu (Kondisyon)
@@ -218,10 +224,7 @@ export default function Malzemeler() {
                   className="w-full bg-slate-50 border border-slate-200 text-xs px-3.5 py-2.5 rounded-xl outline-none focus:border-[#1E314A] cursor-pointer font-bold text-[#1E314A]"
                 >
                   <option value="Hepsi">Tüm Durumlar</option>
-                  <option value="Temiz">✨ Temiz </option>
-                  <option value="Yağlı-Kontamine">⚙️ Yağlı-Kontamine </option>
-                  <option value="Ağır Paslı">🟤 Ağır Paslı </option>
-                  <option value="Yabancı Madde İçeriyor">📦 Yabancı Madde İçeriyor </option>
+                  {materialConditions.map(cond => <option key={cond} value={cond}>{cond}</option>)}
                 </select>
               </div>
 
@@ -239,7 +242,6 @@ export default function Malzemeler() {
                 </select>
               </div>
 
-              {/* FİLTRELEME VE TEMİZLEME BUTONLARI */}
               <div className="flex gap-2">
                 <button 
                   onClick={handleClearFilters}
@@ -248,20 +250,18 @@ export default function Malzemeler() {
                   Sıfırla
                 </button>
                 <button
-                type="button"
-                onClick={() => {}}
-                style={{ backgroundColor: "#123873" }}
-                className="w-2/3 hover:opacity-90 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-sm"
+                  type="button"
+                  onClick={handleApplyFilters}
+                  className="w-2/3 bg-[#1E314A] hover:bg-[#152336] text-white font-bold py-2.5 rounded-xl text-xs transition shadow-sm"
                 >
-                Listele
+                  Filtreleri Uygula
                 </button>
               </div>
-
             </div>
           </div>
 
-          {/* MALZEME KARTLARI GRİDİ */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* MALZEME KARTLARI GRİDİ (ENİNE GENİŞLETİLDİ) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full">
             {filteredMaterials.map((item: any) => (
               <div
                 key={item.id}
@@ -274,11 +274,8 @@ export default function Malzemeler() {
                     </span>
 
                     <div className="flex items-center gap-1.5">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
-                        item.condition === 'Temiz' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 
-                        'bg-amber-50 text-amber-700 border-amber-100'
-                      }`}>
-                        {item.condition === 'Temiz' ? '✨ Temiz ' : '♻️ Geri Dönüşüm'}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-slate-50 text-slate-700 border-slate-200">
+                        {item.condition}
                       </span>
                     </div>
                   </div>
@@ -314,7 +311,6 @@ export default function Malzemeler() {
                   </div>
                 </div>
 
-                {/* ALT AKSİYON */}
                 <div className="pt-2 flex items-center justify-between border-t border-slate-100">
                   <div>
                     <span className="text-[10px] text-slate-400 block font-semibold">
@@ -332,7 +328,7 @@ export default function Malzemeler() {
           </div>
 
           {filteredMaterials.length === 0 && (
-            <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-2">
+            <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-2 w-full">
               <span className="text-3xl">🔍</span>
               <h3 className="font-bold text-slate-800 text-sm">
                 Aradığınız kriterlerde malzeme bulunamadı.
