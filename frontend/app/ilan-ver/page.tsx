@@ -6,6 +6,7 @@ import Sidebar from "../../components/Sidebar";
 
 // Hem named export (export const turkeyData) hem de default export'u hatasız algılayan güvenli import:
 import * as turkeyDataModule from "../data/turkeyData";
+import { apiUrl } from "@/lib/api";
 const turkeyData = (turkeyDataModule as any).default || (turkeyDataModule as any).turkeyData || turkeyDataModule;
 
 // turkeyData.ts dosyasının nesne {"Adana": [...]} veya dizi [{il: "Adana", ilceler: [...]}] 
@@ -136,7 +137,7 @@ export default function IlanVer() {
         hasCertificate: 1
       };
 
-      const res = await fetch("http://localhost:5000/api/listings", {
+      const res = await fetch(apiUrl("/api/listings"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

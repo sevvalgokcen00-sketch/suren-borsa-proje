@@ -1,105 +1,122 @@
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
-const path = require('path');
+/**
+ * Turso (libSQL) veritabanı katmanı.
+ *
+ * Bu modül, eski `sqlite` paketinin get/all/run/exec imzalarını BİLEREK korur;
+ * böylece 66 çağrı noktasının tamamı değişmeden çalışmaya devam eder.
+ *
+ * Eski (sqlite)                 -> Yeni (buradaki sarmalayıcı)
+ *   await db.get(sql, params)   -> aynı, satır nesnesi veya undefined
+ *   await db.all(sql, params)   -> aynı, düz JS nesnelerinden dizi
+ *   await db.run(sql, params)   -> aynı, { lastID, changes }  (BigInt -> Number)
+ *   await db.exec(multiSql)     -> aynı, çoklu DDL/DML
+ *
+ * EK: db.batch(stmts)
+ *   Birden fazla yazmayı TEK ATOMİK işlemde çalıştırır (hepsi ya da hiçbiri).
+ *   stmts: [{ sql: string, args: any[] }, ...]
+ *   Dönüş: her ifade için bir ResultSet dizisi; ekleme yapan ifadelerde
+ *          sonuç.lastInsertRowid (BigInt) bulunur — Number() ile çevirin.
+ *
+ *   Kullanım:
+ *     const res = await db.batch([
+ *       { sql: 'UPDATE bids SET status = ? WHERE id = ?', args: ['onaylandi', 5] },
+ *       { sql: 'INSERT INTO orders (listingId, amount) VALUES (?, ?)', args: [7, 900] },
+ *       { sql: "UPDATE listings SET status = 'Sold' WHERE id = ?", args: [7] },
+ *     ]);
+ *     const orderId = Number(res[1].lastInsertRowid);
+ */
 
-async function getDb() {
-  return open({
-    filename: path.join(__dirname, '../database.sqlite'), // Kök dizindeki ortak veritabanı
-    driver: sqlite3.Database
+require('dotenv').config({ quiet: true });
+const { createClient } = require('@libsql/client');
+
+if (!process.env.TURSO_DATABASE_URL) {
+  throw new Error('TURSO_DATABASE_URL ortam değişkeni tanımlı değil. Sunucu başlatılamıyor.');
+}
+
+// Modül seviyesinde TEK istemci. İstek başına bağlantı AÇILMAZ:
+// Turso'da her bağlantı/ifade bir ağ gidiş-dönüşüdür.
+const client = createClient({
+  url: process.env.TURSO_DATABASE_URL,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+
+// libSQL INTEGER kolonları BigInt döndürebilir; JSON.stringify BigInt'i
+// serialize edemez ("Do not know how to serialize a BigInt" hatası).
+const toNum = (v) => (typeof v === 'bigint' ? Number(v) : v);
+
+// libSQL satırları düz nesne DEĞİLDİR (dizi benzeri indeksli özellikler taşır).
+// { ...row } spread'i bu yüzden yanıta sayısal anahtarlar sızdırabilir.
+// Burada her satırı gerçek bir düz nesneye çeviriyoruz.
+function plain(row) {
+  if (!row) return row;
+  const out = {};
+  for (const key of Object.keys(row)) {
+    if (/^\d+$/.test(key)) continue; // sayısal indeksleri at
+    out[key] = toNum(row[key]);
+  }
+  return out;
+}
+
+/**
+ * Bağlama parametrelerini libSQL'in kabul ettiği biçime normalize eder.
+ *
+ * ÖNEMLİ: Eski `sqlite` paketi `undefined` değerleri sessizce NULL'a çeviriyordu.
+ * libSQL bunu yapmaz ve "TypeError: Unsupported type of value" fırlatır.
+ * `COALESCE(?, kolon)` deseniyle isteğe bağlı alan güncelleyen her handler
+ * (profil güncelleme, tercihler, ilan güncelleme...) bu yüzden 500 veriyordu.
+ * Dönüşüm burada merkezî olarak yapılır; çağrı noktalarına dokunmaya gerek kalmaz.
+ */
+function normalizeArgs(params) {
+  if (!Array.isArray(params)) return params;
+  return params.map((v) => {
+    if (v === undefined) return null;
+    if (v instanceof Date) return v.toISOString();
+    if (typeof v === 'boolean') return v ? 1 : 0;
+    return v;
   });
 }
 
-async function initDb() {
-  const db = await getDb();
+const db = {
+  async get(sql, params = []) {
+    const r = await client.execute({ sql, args: normalizeArgs(params) });
+    return r.rows.length ? plain(r.rows[0]) : undefined;
+  },
 
-  // 1. Tablo Yapılarını Oluştur (Sıfır kurulumlar için materialType ve category eklendi)
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      phone TEXT,
-      company_name TEXT,
-      tax_number TEXT,
-      theme TEXT DEFAULT 'light',
-      notifications_enabled INTEGER DEFAULT 1,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  async all(sql, params = []) {
+    const r = await client.execute({ sql, args: normalizeArgs(params) });
+    return r.rows.map(plain);
+  },
+
+  async run(sql, params = []) {
+    const r = await client.execute({ sql, args: normalizeArgs(params) });
+    return {
+      lastID: toNum(r.lastInsertRowid),
+      changes: toNum(r.rowsAffected),
+    };
+  },
+
+  async exec(sql) {
+    return client.executeMultiple(sql);
+  },
+
+  // Atomik çoklu yazma — ayrıntı için dosya başındaki açıklamaya bakın.
+  async batch(stmts) {
+    const normalized = stmts.map((s) =>
+      typeof s === 'string' ? s : { sql: s.sql, args: normalizeArgs(s.args || []) }
     );
+    return client.batch(normalized, 'write');
+  },
 
-    CREATE TABLE IF NOT EXISTS listings (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER,
-      title TEXT NOT NULL,
-      material_type TEXT NOT NULL,
-      materialType TEXT,
-      category TEXT,
-      weight REAL NOT NULL,
-      price REAL NOT NULL,
-      city TEXT,
-      image_url TEXT,
-      status TEXT DEFAULT 'Aktif',
-      is_archived INTEGER DEFAULT 0,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
+  // Ham libSQL istemcisi (nadir durumlar için kaçış kapağı)
+  raw: client,
+};
 
-    CREATE TABLE IF NOT EXISTS offers (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      listing_id INTEGER,
-      buyer_id INTEGER,
-      offered_price_per_kg REAL,
-      status TEXT DEFAULT 'pending',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS material_indices (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      material_type TEXT UNIQUE,
-      reference_price REAL,
-      daily_change_percent REAL,
-      confidence_level TEXT,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS index_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      material_type TEXT,
-      price REAL,
-      recorded_date DATE
-    );
-  `);
-
-  // 2. DB Migration: Var olan 'listings' tablosuna eksik kolonları güvenli şekilde ekle
-  try {
-    const columns = await db.all(`PRAGMA table_info(listings)`);
-    const existingColumns = columns.map(c => c.name);
-
-    if (!existingColumns.includes('materialType')) {
-      await db.exec(`ALTER TABLE listings ADD COLUMN materialType TEXT;`);
-      console.log("✅ Migration: 'materialType' kolonu eklendi.");
-    }
-
-    if (!existingColumns.includes('category')) {
-      await db.exec(`ALTER TABLE listings ADD COLUMN category TEXT;`);
-      console.log("✅ Migration: 'category' kolonu eklendi.");
-    }
-  } catch (migErr) {
-    console.error("Migration Kontrol Hatası:", migErr.message);
-  }
-
-  // 3. UTF-8 Karakter Onarımı (Bozuk Türkçe Karakterleri Otomatik Düzelt)
-  try {
-    await db.run(`
-      UPDATE listings 
-      SET title = REPLACE(REPLACE(title, 'Gncel', 'Güncel'), 'elik', 'Çelik'),
-          material_type = REPLACE(REPLACE(material_type, 'Gncel', 'Güncel'), 'elik', 'Çelik')
-      WHERE title LIKE '%Gncel%' OR title LIKE '%elik%' OR material_type LIKE '%Gncel%' OR material_type LIKE '%elik%';
-    `);
-  } catch (utfErr) {
-    // Düzeltme esnasında bir uyarı oluşursa sunucu açılışının patlamasını engeller
-  }
+/**
+ * Geriye dönük uyumluluk: mevcut kod her handler'da
+ *   const db = await getDb();
+ * yazıyor. Burada artık ağ işi YAPILMAZ; paylaşılan nesne döner.
+ */
+async function getDb() {
+  return db;
 }
 
-initDb().catch(console.error);
-
-module.exports = { getDb };
+module.exports = { getDb, db };

@@ -1,17 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import {  useSearchParams , useRouter } from "next/navigation";
 import Sidebar from "../../../components/Sidebar";
 import baseData from "../../data/islemler.json";
+import { apiUrl } from "@/lib/api";
 
 // Excel ve sistem veri setine uygun sabitler
 const excelAltTurler = ["İmalat Artığı Profil", "Ekstra İkincil Hammadde", "Talaş / Kırpıntı", "DKP İkincil Hammadde", "Mahalle (Karışık)", "Standart Dışı Sac / Levha"];
 const companyList = Array.from({ length: 60 }, (_, i) => `Firma ${1001 + i} San. Tic. Ltd. Şti.`);
 const cityList = ["Adana", "Bursa", "Eskişehir", "Gaziantep", "İstanbul", "İzmir", "Kocaeli", "Konya", "Manisa", "Sakarya"];
 
-export default function MalzemeDetayPage() {
+function MalzemeDetayContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawId = searchParams.get("id") || "00001";
@@ -51,7 +52,7 @@ export default function MalzemeDetayPage() {
         expiresIn: "48s"
       };
 
-      const res = await fetch("http://localhost:5000/api/bids", {
+      const res = await fetch(apiUrl("/api/bids"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
@@ -75,28 +76,28 @@ export default function MalzemeDetayPage() {
       // Farklı ilanlar için backend arkadaşının yüklediği özel görsel setleri
   const imageSets: Record<string, string[]> = {
     "1": [
-      "http://localhost:5000/uploads/MD-TEMIZ-01.jpg",
-      "http://localhost:5000/uploads/MD-TEMIZ-02.jpg",
-      "http://localhost:5000/uploads/MD-TEMIZ-03.jpg",
-      "http://localhost:5000/uploads/MD-TEMIZ-04.jpg"
+      apiUrl("/uploads/MD-TEMIZ-01.jpg"),
+      apiUrl("/uploads/MD-TEMIZ-02.jpg"),
+      apiUrl("/uploads/MD-TEMIZ-03.jpg"),
+      apiUrl("/uploads/MD-TEMIZ-04.jpg")
     ],
     "2": [
-      "http://localhost:5000/uploads/MD-KESIMISLEME-01.jpg",
-      "http://localhost:5000/uploads/MD-KESIMISLEME-02.jpg",
-      "http://localhost:5000/uploads/MD-KESIMISLEME-03.jpg",
-      "http://localhost:5000/uploads/MD-TEMIZ-05.jpg"
+      apiUrl("/uploads/MD-KESIMISLEME-01.jpg"),
+      apiUrl("/uploads/MD-KESIMISLEME-02.jpg"),
+      apiUrl("/uploads/MD-KESIMISLEME-03.jpg"),
+      apiUrl("/uploads/MD-TEMIZ-05.jpg")
     ],
     "3": [
-      "http://localhost:5000/uploads/PB-BALYA-01.jpg",
-      "http://localhost:5000/uploads/PB-BALYA-02.jpg",
-      "http://localhost:5000/uploads/PB-BALYA-03.jpg",
-      "http://localhost:5000/uploads/PB-GEVSEK-01.jpg"
+      apiUrl("/uploads/PB-BALYA-01.jpg"),
+      apiUrl("/uploads/PB-BALYA-02.jpg"),
+      apiUrl("/uploads/PB-BALYA-03.jpg"),
+      apiUrl("/uploads/PB-GEVSEK-01.jpg")
     ],
     "4": [
-      "http://localhost:5000/uploads/MD-URETIMFAZLASI-01.jpg",
-      "http://localhost:5000/uploads/MD-URETIMFAZLASI-02.jpg",
-      "http://localhost:5000/uploads/MD-URETIMFAZLASI-03.jpg",
-      "http://localhost:5000/uploads/MD-ORIJINALAMBALAJ-01.jpg"
+      apiUrl("/uploads/MD-URETIMFAZLASI-01.jpg"),
+      apiUrl("/uploads/MD-URETIMFAZLASI-02.jpg"),
+      apiUrl("/uploads/MD-URETIMFAZLASI-03.jpg"),
+      apiUrl("/uploads/MD-ORIJINALAMBALAJ-01.jpg")
     ]
   };
 
@@ -406,5 +407,23 @@ export default function MalzemeDetayPage() {
 
       </div>
     </div>
+  );
+}
+
+// useSearchParams() bir Suspense sınırı gerektirir; aksi halde bu sayfa
+// prerender sırasında "missing-suspense-with-csr-bailout" hatasıyla build'i
+// düşürür. İçerik tamamen istemci tarafında yüklendiği için sarmalayıcı
+// davranışı değiştirmez, yalnızca ilk boyamada fallback gösterir.
+export default function MalzemeDetayPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] text-slate-500 text-sm">
+          Malzeme detayı yükleniyor...
+        </div>
+      }
+    >
+      <MalzemeDetayContent />
+    </Suspense>
   );
 }

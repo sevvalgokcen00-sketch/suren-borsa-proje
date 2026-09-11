@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import baseData from "../data/islemler.json";
+import { apiUrl } from "@/lib/api";
 
 // Excel veri setindeki resmi ve profesyonel demir-çelik sınıflandırmaları
 const excelAltTurler = [
@@ -42,7 +43,7 @@ export default function IlanlarPaneli() {
 
         const loadListings = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/listings");
+      const res = await fetch(apiUrl("/api/listings"));
       if (res.ok) {
         const raw = await res.json();
         const rawList = Array.isArray(raw) ? raw : (raw.value || raw.listings || []);
@@ -87,7 +88,7 @@ export default function IlanlarPaneli() {
 
   const handleSaveEdit = async (id: string) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/listings/${id}`, {
+      const res = await fetch(apiUrl(`/api/listings/${id}`), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -117,7 +118,7 @@ export default function IlanlarPaneli() {
   const handleDeleteListing = async (id: string) => {
     if (!confirm("Bu ilanı kalıcı olarak kaldırmak istediğinize emin misiniz?")) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/listings/${id}`, {
+      const res = await fetch(apiUrl(`/api/listings/${id}`), {
         method: "DELETE"
       });
       if (res.ok) {

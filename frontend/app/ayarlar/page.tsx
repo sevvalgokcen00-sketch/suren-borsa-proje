@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
+import { apiUrl } from "@/lib/api";
 
 export default function Ayarlar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -36,7 +37,7 @@ export default function Ayarlar() {
 
   
   useEffect(() => {
-    fetch("http://localhost:5000/api/profile/1")
+    fetch(apiUrl("/api/profile/1"))
       .then((res) => res.json())
       .then((data) => {
         if (data && !data.error) {
@@ -190,7 +191,7 @@ export default function Ayarlar() {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/profile/1", {
+      const res = await fetch(apiUrl("/api/profile/1"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -215,7 +216,7 @@ export default function Ayarlar() {
   
   const handleSaveNotifications = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/profile/1/settings", {
+      const res = await fetch(apiUrl("/api/profile/1/settings"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -238,7 +239,7 @@ export default function Ayarlar() {
 
   const handleSaveCompany = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/profile/1", {
+      const res = await fetch(apiUrl("/api/profile/1"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -543,7 +544,6 @@ export default function Ayarlar() {
                   <input
                     type="checkbox"
                     checked={!!notifications.emailOffers} onChange={(e) => setNotifications({ ...notifications, emailOffers: e.target.checked })}
-                    onChange={(e) => setNotifications({ ...notifications, emailOffers: e.target.checked })}
                     className="w-4 h-4 accent-[#1E314A] cursor-pointer"
                   />
                 </label>
@@ -556,7 +556,6 @@ export default function Ayarlar() {
                   <input
                     type="checkbox"
                     checked={!!notifications.emailMarket} onChange={(e) => setNotifications({ ...notifications, emailMarket: e.target.checked })}
-                    onChange={(e) => setNotifications({ ...notifications, emailMarket: e.target.checked })}
                     className="w-4 h-4 accent-[#1E314A] cursor-pointer"
                   />
                 </label>
@@ -569,7 +568,6 @@ export default function Ayarlar() {
                   <input
                     type="checkbox"
                     checked={!!notifications.smsAlerts} onChange={(e) => setNotifications({ ...notifications, smsAlerts: e.target.checked })}
-                    onChange={(e) => setNotifications({ ...notifications, smsAlerts: e.target.checked })}
                     className="w-4 h-4 accent-[#1E314A] cursor-pointer"
                   />
                 </label>

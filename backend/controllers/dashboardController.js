@@ -26,8 +26,12 @@ exports.getDashboardData = async (req, res) => {
     );
 
     // 5. Bugün Eklenen İlan Sayısı (Dinamik Günlük İstatistik)
+    // Gün sınırı Türkiye saatine (UTC+3) sabitlenir. 'localtime' kullanılırsa
+    // sorguyu çalıştıran sunucunun saat dilimine göre çözülür; Turso ve Cloud Run
+    // UTC çalıştığı için gece yarısı-03:00 TSİ arasında yanlış günü sayardı.
     const todayListingsResult = await db.get(
-      `SELECT COUNT(*) as addedToday FROM listings WHERE DATE(created_at) = DATE('now', 'localtime')`
+      `SELECT COUNT(*) as addedToday FROM listings
+       WHERE DATE(created_at, '+3 hours') = DATE('now', '+3 hours')`
     );
 
     // 6. Aylık İşlem Hacmi Trendi
@@ -104,7 +108,6 @@ exports.getDashboardData = async (req, res) => {
     return res.status(500).json({ 
       success: false, 
       message: "Gösterge paneli verileri alınamadı.", 
-      error: error.message 
     });
   }
 };

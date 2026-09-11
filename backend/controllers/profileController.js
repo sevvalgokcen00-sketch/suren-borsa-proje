@@ -15,7 +15,7 @@ exports.getProfile = async (req, res) => {
     res.json(user);
   } catch (err) {
     console.error("GET /api/profile/:userId hatası:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Profil bilgileri alınamadı." });
   }
 };
 
@@ -50,7 +50,7 @@ exports.updateProfile = async (req, res) => {
     res.json({ success: true, message: "Profil ve firma bilgileri başarıyla güncellendi." });
   } catch (err) {
     console.error("PUT /api/profile/:userId hatası:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Profil güncellenirken hata oluştu." });
   }
 };
 
@@ -84,7 +84,7 @@ exports.updateSettings = async (req, res) => {
     res.json({ success: true, message: "Kullanıcı tercihleri güncellendi." });
   } catch (err) {
     console.error("PUT /api/profile/:userId/settings hatası:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Tercihler güncellenirken hata oluştu." });
   }
 };
 
@@ -100,6 +100,6 @@ exports.getInvoices = async (req, res) => {
     res.json(invoices || []);
   } catch (err) {
     console.error("GET /api/profile/:userId/invoices hatası:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Faturalar alınamadı." });
   }
 };

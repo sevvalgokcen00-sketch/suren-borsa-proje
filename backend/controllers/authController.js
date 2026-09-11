@@ -43,7 +43,8 @@ exports.register = async (req, res) => {
       userId: result.lastID
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("[controllers/authController.js]", err);
+    res.status(500).json({ error: "Kayıt sırasında bir hata oluştu." });
   }
 };
 
@@ -91,7 +92,8 @@ exports.login = async (req, res) => {
       user
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("[controllers/authController.js]", err);
+    res.status(500).json({ error: "Giriş sırasında bir hata oluştu." });
   }
 };
 
@@ -116,6 +118,7 @@ exports.forgotPassword = async (req, res) => {
       message: "Şifre sıfırlama bağlantısı e-posta adresinize gönderildi."
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("[controllers/authController.js]", err);
+    res.status(500).json({ error: "İşlem sırasında bir hata oluştu." });
   }
 };

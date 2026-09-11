@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.db
+.env
+.env.*
+!.env.example
+patch_*.js
+test_*.js
+dynamic-test.js
+migrate_backend2.js
+turso-test.js
+.git

@@ -1,13 +1,4 @@
-const { open } = require('sqlite');
-const sqlite3 = require('sqlite3');
-
-// Veritabanı Bağlantısı
-async function getDb() {
-  return open({
-    filename: './database.sqlite',
-    driver: sqlite3.Database
-  });
-}
+const { getDb } = require('../db');
 
 // Örnek Arama Verileri (DB Boş veya Çökmüşse Yedeğe Geçer)
 const SAMPLE_SEARCH_DATA = [
@@ -32,7 +23,8 @@ exports.getCategories = async (req, res) => {
     ];
     res.status(200).json({ success: true, data: categories });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("[controllers/homeController.js]", error);
+    res.status(500).json({ success: false, message: "Kategoriler alınamadı." });
   }
 };
 
@@ -132,7 +124,6 @@ exports.searchListings = async (req, res) => {
     return res.status(500).json({ 
       success: false, 
       message: "Arama yapılırken sunucu hatası oluştu.", 
-      error: error.message 
     });
   }
 };

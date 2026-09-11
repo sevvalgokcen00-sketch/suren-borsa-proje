@@ -1,61 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
-
-async function getDb() {
-  const db = await open({
-    filename: './database.sqlite',
-    driver: sqlite3.Database
-  });
-
-  // 1. Dış Piyasa Fiyatları Tablosu (Manuel/Yönetici)
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS external_market_prices (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      materialType TEXT NOT NULL,
-      usdRate REAL DEFAULT 38.5,
-      globalPriceTL REAL NOT NULL,
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  // 2. Güncel Malzeme Endeksleri Tablosu
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS price_indexes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      materialType TEXT UNIQUE NOT NULL,
-      referencePrice REAL NOT NULL,
-      dailyChangePercent REAL DEFAULT 0.0,
-      minPrice REAL DEFAULT 0,
-      maxPrice REAL DEFAULT 0,
-      transactionCount INTEGER DEFAULT 0,
-      trustLevel TEXT DEFAULT 'Yüksek',
-      updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
-
-  // 3. Fiyat Geçmişi Tablosu (7 ve 30 Günlük Grafik İçin)
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS price_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      materialType TEXT NOT NULL,
-      price REAL NOT NULL,
-      recordedDate DATE DEFAULT (date('now'))
-    );
-  `);
-
-  // Eksik olabilecek kolonlar için dinamik migration
-  const historyCols = (await db.all("PRAGMA table_info(price_history);")).map(c => c.name);
-  if (!historyCols.includes('recordedDate')) {
-    await db.run("ALTER TABLE price_history ADD COLUMN recordedDate DATE;");
-    if (historyCols.includes('date')) {
-      await db.run("UPDATE price_history SET recordedDate = date WHERE recordedDate IS NULL;");
-    }
-  }
-
-  return db;
-}
+const { getDb } = require('../db');
 
 // --------------------------------------------------------------------------
 // 1. TÜM ENDEKSLERİ LİSTELEME (GET /api/market/indexes)
@@ -66,7 +11,8 @@ router.get('/indexes', async (req, res) => {
     const indexes = await db.all('SELECT * FROM price_indexes ORDER BY id ASC');
     res.json(indexes);
   } catch (error) {
-    res.status(500).json({ message: "Endeksler alınamadı!", error: error.message });
+    console.error("[routes/market.js]", error);
+    res.status(500).json({ message: "Endeksler alınamadı!" });
   }
 });
 
@@ -90,7 +36,8 @@ router.get('/history/:materialType', async (req, res) => {
 
     res.json(history);
   } catch (error) {
-    res.status(500).json({ message: "Fiyat geçmişi alınamadı!", error: error.message });
+    console.error("[routes/market.js]", error);
+    res.status(500).json({ message: "Fiyat geçmişi alınamadı!" });
   }
 });
 
@@ -166,7 +113,8 @@ router.post('/calculate-recommendation', async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({ message: "Hesaplama yapılırken hata oluştu!", error: error.message });
+    console.error("[routes/market.js]", error);
+    res.status(500).json({ message: "Hesaplama yapılırken hata oluştu!" });
   }
 });
 

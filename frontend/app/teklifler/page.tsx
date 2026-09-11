@@ -3,6 +3,62 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
+import { apiUrl } from "@/lib/api";
+
+/**
+ * Teklif satırı.
+ *
+ * Bu sayfa başlangıçta sabit (mock) veriye göre yazılmış, sonradan /api/bids'e
+ * bağlanmış. fetchTeklifler() API alanlarını mock adlarına dönüştürüyor
+ * (b.amount -> offerAmount, b.buyerCompanyName -> offeredBy ...), ancak JSX'in
+ * bazı yerleri hâlâ HAM API adlarını (price, unit, amount) okuyor. İki ad
+ * kümesi bu yüzden bir arada yaşıyor.
+ *
+ * id ve status dışındaki her alan isteğe bağlı: hangi alanın dolu olduğu
+ * kaydın nereden geldiğine (mock / gelen / verilen / onaylanan) göre değişir.
+ * Tip açıkça verilmezse TS sadece mock literalinden çıkarım yapar ve ham API
+ * adlarını okuyan her satır derlemede patlar.
+ */
+type Teklif = {
+  id: number;
+  status?: string;
+
+  // Ortak
+  listingTitle?: string;
+  totalPrice?: string | number;
+  incoterm?: string;
+  paymentType?: string;
+  date?: string;
+
+  // "Gelen teklifler"
+  offeredBy?: string;
+  offerAmount?: number;
+  marketMedian?: number;
+  buyerNote?: string;
+  expiresIn?: string;
+  hasCertificate?: boolean;
+
+  // "Verdiğim teklifler"
+  ownerCompany?: string;
+  myOffer?: number;
+  myNote?: string;
+  amount?: string | number;
+
+  // "Onaylanan işlemler"
+  otherParty?: string;
+  tonnage?: string | number;
+  savedCarbon?: string | number;
+  treeEquivalent?: string | number;
+
+  // JSX'te hâlâ okunan ham API / eski alanlar
+  price?: number;
+  unit?: string;
+  title?: string;
+  company?: string;
+  desc?: string;
+  note?: string;
+  paymentTerm?: string;
+};
 
 export default function TekliflerPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -13,7 +69,7 @@ export default function TekliflerPage() {
   
   const fetchTeklifler = async () => {
     try {
-      const res = await fetch("http://localhost:5000/api/bids");
+      const res = await fetch(apiUrl("/api/bids"));
       if (!res.ok) return;
       const data = await res.json();
       if (Array.isArray(data) && data.length > 0) {
@@ -78,7 +134,7 @@ export default function TekliflerPage() {
       prev.map((item: any) => (item.id === bidId ? { ...item, status: newStatus } : item))
     );
     try {
-      const res = await fetch(`http://localhost:5000/api/bids/${bidId}/status`, {
+      const res = await fetch(apiUrl(`/api/bids/${bidId}/status`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -95,7 +151,7 @@ export default function TekliflerPage() {
 
 
   // Gelen Teklifler (Demir-Çelik Sektör Terminolojisine Uyarlı)
-  const [gelenTeklifler, setGelenTeklifler] = useState([
+  const [gelenTeklifler, setGelenTeklifler] = useState<Teklif[]>([
     {
       id: 101,
       listingTitle: "10mm S235JR Levha Sac Kesim Artığı (12.500 kg)",
@@ -129,7 +185,7 @@ export default function TekliflerPage() {
   ]);
 
   // Verdiğim Teklifler
-  const [verilenTeklifler, setVerilenTeklifler] = useState([
+  const [verilenTeklifler, setVerilenTeklifler] = useState<Teklif[]>([
     {
       id: 201,
       listingTitle: "İmalat Artığı Profil ve Boru Fireleri (3.200 kg)",
@@ -146,7 +202,7 @@ export default function TekliflerPage() {
   ]);
 
   // Onaylanan İşlemlerim Listesi State'i
-  const [onaylananIslemler, setOnaylananIslemler] = useState([
+  const [onaylananIslemler, setOnaylananIslemler] = useState<Teklif[]>([
     {
       id: 301,
       listingTitle: "DKP Soğuk Haddelenmiş Sac Kırpıntısı (4.800 kg)",
@@ -253,7 +309,7 @@ export default function TekliflerPage() {
     );
     try {
       // Backend veritabanına kalıcı olarak kaydet
-      await fetch(`http://localhost:5000/api/bids/${id}/status`, {
+      await fetch(apiUrl(`/api/bids/${id}/status`), {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
@@ -265,7 +321,7 @@ export default function TekliflerPage() {
 
   const handleDeleteGelen = async (id: any) => {
     try {
-      await fetch(`http://localhost:5000/api/bids/${id}`, {
+      await fetch(apiUrl(`/api/bids/${id}`), {
         method: "DELETE",
       });
     } catch (err) {
@@ -283,7 +339,7 @@ export default function TekliflerPage() {
         setOnaylananIslemler((prev: any[]) => prev.filter((item: any) => item.id !== id));
       }
       try {
-        await fetch(`http://localhost:5000/api/bids/${id}`, { method: "DELETE" });
+        await fetch(apiUrl(`/api/bids/${id}`), { method: "DELETE" });
         if (typeof fetchTeklifler === "function") {
           fetchTeklifler();
         }
@@ -305,7 +361,7 @@ export default function TekliflerPage() {
 
     if (bidModal.mode === "guncelle" && bidModal.targetId) {
       try {
-        const response = await fetch(`http://localhost:5000/api/bids/${bidModal.targetId}`, {
+        const response = await fetch(apiUrl(`/api/bids/${bidModal.targetId}`), {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -362,7 +418,7 @@ export default function TekliflerPage() {
 
     if (bidModal.mode === "yeni") {
     try {
-      await fetch("http://localhost:5000/api/bids", {
+      await fetch(apiUrl("/api/bids"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -396,8 +452,12 @@ export default function TekliflerPage() {
       setActiveTab("verilen");
       alert("✅ Yeni borsa teklifiniz başarıyla iletildi!");
     } else if (bidModal.mode === "karsi" && bidModal.targetId) {
+      // Karşı teklif yalnızca GELEN teklifler üzerinde anlamlı ve sonuç
+      // setGelenTeklifler'e yazılıyor; bu yüzden kaynak da gelenTeklifler olmalı.
+      // (Eskiden displayedTeklifler kullanılıyordu: aktif sekme "verilen" ise
+      // gelen teklif listesi yanlış veriyle ezilirdi.)
       setGelenTeklifler(
-        displayedTeklifler.map((item) =>
+        gelenTeklifler.map((item) =>
           item.id === bidModal.targetId
             ? {
                 ...item,
@@ -436,14 +496,14 @@ export default function TekliflerPage() {
 
   const filteredGelen = gelenTeklifler.filter(
     (item) =>
-      item.listingTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.offeredBy.toLowerCase().includes(searchQuery.toLowerCase())
+      (item.listingTitle ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.offeredBy ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredVerilen = verilenTeklifler.filter(
     (item) =>
-      item.listingTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.ownerCompany.toLowerCase().includes(searchQuery.toLowerCase())
+      (item.listingTitle ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.ownerCompany ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   
@@ -474,7 +534,7 @@ export default function TekliflerPage() {
       const s = String(item.status || "").toLowerCase();
       return s.includes("onay") || s === "approved";
     })
-    .map((item: any) => ({
+    .map((item: any): Teklif => ({
       id: item.id,
       listingTitle: item.listingTitle || item.title || "Onaylanan Malzeme",
       otherParty: item.company || item.offeredBy || "Alıcı Firma",
@@ -655,7 +715,7 @@ export default function TekliflerPage() {
                     <td className="py-4 px-3 max-w-xs">
                       {item.buyerNote ? (
                         <button
-                          onClick={() => setActiveNoteModal(item.buyerNote)}
+                          onClick={() => setActiveNoteModal(item.buyerNote ?? null)}
                           className="text-left text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg text-[11px] line-clamp-1 transition font-medium"
                         >
                           💬 {item.buyerNote}

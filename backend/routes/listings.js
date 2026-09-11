@@ -72,7 +72,8 @@ router.get('/', async (req, res) => {
 
     res.json(formattedListings);
   } catch (error) {
-    res.status(500).json({ message: "İlanlar çekilirken hata oluştu!", error: error.message });
+    console.error("[routes/listings.js]", error);
+    res.status(500).json({ message: "İlanlar çekilirken hata oluştu!" });
   }
 });
 
@@ -108,7 +109,8 @@ router.get('/dashboard-stats', async (req, res) => {
       }
     });
   } catch (error) {
-    res.status(500).json({ message: "İstatistikler çekilirken hata oluştu!", error: error.message });
+    console.error("[routes/listings.js]", error);
+    res.status(500).json({ message: "İstatistikler çekilirken hata oluştu!" });
   }
 });
 
@@ -129,7 +131,8 @@ router.get('/:id', async (req, res) => {
       imageUrls: listing.imageUrls ? JSON.parse(listing.imageUrls) : []
     });
   } catch (error) {
-    res.status(500).json({ message: "İlan detayı alınırken hata oluştu!", error: error.message });
+    console.error("[routes/listings.js]", error);
+    res.status(500).json({ message: "İlan detayı alınırken hata oluştu!" });
   }
 });
 
@@ -172,7 +175,7 @@ router.post('/', async (req, res) => {
     });
   } catch (err) {
     console.error("İlan ekleme hatası:", err);
-    res.status(500).json({ message: "İlan eklenirken hata oluştu!", error: err.message });
+    res.status(500).json({ message: "İlan eklenirken hata oluştu!" });
   }
 });
 
@@ -180,7 +183,6 @@ router.post('/', async (req, res) => {
 // 5. İLAN GÜNCELLEME (Kalıcı SQLite Güncellemesi)
 router.put('/:id', async (req, res) => {
   try {
-    const { getDb } = require('../db');
     const db = await getDb();
     const rawId = req.params.id;
     const numericId = parseInt(String(rawId).replace(/\D/g, ''), 10) || rawId;
@@ -202,14 +204,13 @@ router.put('/:id', async (req, res) => {
     res.json({ success: true, message: 'İlan başarıyla güncellendi' });
   } catch (error) {
     console.error("PUT /api/listings/:id hatası:", error);
-    res.status(500).json({ message: 'İlan güncellenirken hata oluştu!', error: error.message });
+    res.status(500).json({ message: 'İlan güncellenirken hata oluştu!' });
   }
 });
 
 // 6. İLAN SİLME (Kalıcı SQLite Silme)
 router.delete('/:id', async (req, res) => {
   try {
-    const { getDb } = require('../db');
     const db = await getDb();
     const rawId = req.params.id;
     const numericId = parseInt(String(rawId).replace(/\D/g, ''), 10) || rawId;
@@ -224,7 +225,7 @@ router.delete('/:id', async (req, res) => {
     res.json({ success: true, message: 'İlan veritabanından kalıcı olarak kaldırıldı.' });
   } catch (error) {
     console.error("DELETE /api/listings/:id hatası:", error);
-    res.status(500).json({ message: 'İlan kaldırılırken hata oluştu!', error: error.message });
+    res.status(500).json({ message: 'İlan kaldırılırken hata oluştu!' });
   }
 });
 

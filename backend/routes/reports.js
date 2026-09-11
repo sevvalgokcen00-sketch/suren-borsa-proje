@@ -79,7 +79,7 @@ router.get('/esg', async (req, res) => {
     });
   } catch (error) {
     console.error("ESG Rapor API Hatası:", error);
-    res.status(500).json({ success: false, message: "Rapor verileri alınırken hata oluştu.", error: error.message });
+    res.status(500).json({ success: false, message: "Rapor verileri alınırken hata oluştu." });
   }
 });
 

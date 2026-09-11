@@ -3,17 +3,44 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
+import { apiUrl } from "@/lib/api";
+
+// GET /api/reports/esg yanıt şekli (backend routes/reports.js ile birebir)
+type EsgCategory = {
+  name: string;
+  ton: number;
+  percentage: number;
+  co2PreventedTon: number;
+};
+
+type EsgReport = {
+  summary: {
+    totalListings: number;
+    totalWeightTon: number;
+    totalCO2Ton: number;
+    cumulativeEnergyMWh: number;
+    circularityRate: number;
+  };
+  ecological: {
+    treeEquivalent: number;
+    forestHectare: number;
+    vehicleEquivalent: number;
+  };
+  categories: EsgCategory[];
+};
 
 export default function RaporlarPage() {
   const [selectedPeriod, setSelectedPeriod] = useState("2026 - Yıllık Özet");
-  const [reportData, setReportData] = useState({
+  // Not: tip belirtilmezse `categories: []` -> never[] olarak çıkarsanır ve
+  // cat.name erişimi derlemede patlar.
+  const [reportData, setReportData] = useState<EsgReport>({
     summary: { totalListings: 380, totalWeightTon: 18420, totalCO2Ton: 27630, cumulativeEnergyMWh: 82890, circularityRate: 84.6 },
     ecological: { treeEquivalent: 130000, forestHectare: 325, vehicleEquivalent: 1150 },
     categories: []
   });
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/reports/esg")
+    fetch(apiUrl("/api/reports/esg"))
       .then(res => res.json())
       .then(res => {
         if (res && res.success && res.data) {

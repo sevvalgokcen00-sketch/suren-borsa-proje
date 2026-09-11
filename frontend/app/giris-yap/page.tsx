@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { apiUrl } from "@/lib/api";
 
 export default function GirisYap() {
   const [userType, setUserType] = useState<"kurumsal" | "bireysel">("kurumsal");
@@ -18,7 +19,7 @@ export default function GirisYap() {
     setErrorMessage("");
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch(apiUrl("/api/auth/login"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

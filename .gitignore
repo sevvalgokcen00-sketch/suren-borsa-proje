@@ -3,3 +3,6 @@ database.sqlite
 uploads/*
 !.gitkeep
 .env
+.env.*
+!.env.example
+*.db

@@ -32,7 +32,8 @@ exports.getCurrentIndices = async (req, res) => {
 
     res.json({ success: true, data: indices });
   } catch (error) {
-    res.status(500).json({ message: "Endeksler çekilirken hata oluştu!", error: error.message });
+    console.error("[controllers/indexController.js]", error);
+    res.status(500).json({ message: "Endeksler çekilirken hata oluştu!" });
   }
 };
 

@@ -46,7 +46,7 @@ router.get('/', async (req, res) => {
     res.json(bids);
   } catch (error) {
     console.error('Bids GET Hatası:', error);
-    res.status(500).json({ message: 'Teklifler çekilirken hata oluştu!', error: error.message });
+    res.status(500).json({ message: 'Teklifler çekilirken hata oluştu!' });
   }
 });
 
@@ -61,7 +61,8 @@ router.get('/:id', async (req, res) => {
     }
     res.json(bid);
   } catch (error) {
-    res.status(500).json({ message: 'Teklif detayı alınamadı!', error: error.message });
+    console.error("[routes/bids.js]", error);
+    res.status(500).json({ message: 'Teklif detayı alınamadı!' });
   }
 });
 
@@ -114,7 +115,7 @@ router.post('/', async (req, res) => {
     res.status(201).json(newBid);
   } catch (error) {
     console.error('Bids POST Hatası:', error);
-    res.status(500).json({ message: 'Teklif oluşturulurken hata oluştu!', error: error.message });
+    res.status(500).json({ message: 'Teklif oluşturulurken hata oluştu!' });
   }
 });
 
@@ -129,7 +130,8 @@ router.patch('/:id/status', async (req, res) => {
     const updated = await db.get('SELECT * FROM bids WHERE id = ?', [id]);
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ message: 'Teklif güncellenemedi!', error: error.message });
+    console.error("[routes/bids.js]", error);
+    res.status(500).json({ message: 'Teklif güncellenemedi!' });
   }
 });
 
@@ -143,7 +145,7 @@ router.delete('/:id', async (req, res) => {
     res.json({ success: true, message: 'Teklif başarıyla silindi', deletedId: id });
   } catch (error) {
     console.error('Teklif silinemedi:', error);
-    res.status(500).json({ message: 'Teklif silinemedi!', error: error.message });
+    res.status(500).json({ message: 'Teklif silinemedi!' });
   }
 });
 

@@ -150,7 +150,6 @@ exports.getCompanyAnalysis = async (req, res) => {
     return res.status(500).json({ 
       success: false, 
       message: "Analiz verileri alınamadı.", 
-      error: error.message 
     });
   }
 };
