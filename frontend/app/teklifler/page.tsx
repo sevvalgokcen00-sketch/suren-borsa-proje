@@ -3,62 +3,64 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
-import { apiUrl } from "@/lib/api";
+import { apiUrl, apiFetch } from "@/lib/api";
 
 /**
- * Teklif satırı.
+ * GET /api/bids — HAM API ŞEKLİ.
  *
- * Bu sayfa başlangıçta sabit (mock) veriye göre yazılmış, sonradan /api/bids'e
- * bağlanmış. fetchTeklifler() API alanlarını mock adlarına dönüştürüyor
- * (b.amount -> offerAmount, b.buyerCompanyName -> offeredBy ...), ancak JSX'in
- * bazı yerleri hâlâ HAM API adlarını (price, unit, amount) okuyor. İki ad
- * kümesi bu yüzden bir arada yaşıyor.
- *
- * id ve status dışındaki her alan isteğe bağlı: hangi alanın dolu olduğu
- * kaydın nereden geldiğine (mock / gelen / verilen / onaylanan) göre değişir.
- * Tip açıkça verilmezse TS sadece mock literalinden çıkarım yapar ve ham API
- * adlarını okuyan her satır derlemede patlar.
+ * Eskiden fetchTeklifler() bu alanları mock adlarına çeviriyordu
+ * (b.amount -> offerAmount, b.buyerCompanyName -> offeredBy), ama JSX'in bir
+ * kısmı ham adları okumaya devam ediyordu; bu yüzden fiyat sütunu her satırda
+ * 0 görünüyordu. EŞLEME TAMAMEN KALDIRILDI — her yerde API adları kullanılır.
  */
-type Teklif = {
+type Bid = {
   id: number;
-  status?: string;
-
-  // Ortak
-  listingTitle?: string;
-  totalPrice?: string | number;
-  incoterm?: string;
-  paymentType?: string;
-  date?: string;
-
-  // "Gelen teklifler"
-  offeredBy?: string;
-  offerAmount?: number;
-  marketMedian?: number;
-  buyerNote?: string;
-  expiresIn?: string;
-  hasCertificate?: boolean;
-
-  // "Verdiğim teklifler"
-  ownerCompany?: string;
-  myOffer?: number;
-  myNote?: string;
-  amount?: string | number;
-
-  // "Onaylanan işlemler"
-  otherParty?: string;
-  tonnage?: string | number;
-  savedCarbon?: string | number;
-  treeEquivalent?: string | number;
-
-  // JSX'te hâlâ okunan ham API / eski alanlar
-  price?: number;
-  unit?: string;
-  title?: string;
-  company?: string;
-  desc?: string;
-  note?: string;
-  paymentTerm?: string;
+  listingId: number | null;
+  buyerId: number | null;
+  buyerCompanyName: string | null;
+  amount: number | null;
+  unit: string | null;
+  price: number | null;
+  totalPrice: number | null;
+  incoterm: string | null;
+  paymentType: string | null;
+  buyerNote: string | null;
+  expiresIn: string | null;
+  status: string | null;
+  hasCertificate: number | null;
+  createdAt: string | null;
+  /** LEFT JOIN listings */
+  listingTitle: string | null;
+  listingStatus: string | null;
 };
+
+/** GET /api/orders — onaylanan/tescilli işlemler (karbon verisi burada). */
+type Order = {
+  id: number;
+  bidId: number | null;
+  listingId: number;
+  buyerId: number | null;
+  sellerId: number | null;
+  agreedPrice: number | null;
+  amount: number | null;
+  paymentMethod: string | null;
+  deliveryAddress: string | null;
+  shippingDate: string | null;
+  savedCarbon: number | null;
+  savedTrees: number | null;
+  status: string | null;
+  createdAt: string | null;
+  listingTitle: string | null;
+  materialType: string | null;
+};
+
+/** Durum etiketini tek biçime indirger (backend 'bekleyen'/'Onaylandı'/'approved' karışık döndürür). */
+function normalizeStatus(raw: string | null | undefined): "bekleyen" | "onaylanan" | "reddedildi" {
+  const s = String(raw ?? "").toLowerCase();
+  if (s.includes("onay") || s === "approved" || s === "kabul_edildi") return "onaylanan";
+  if (s.includes("red") || s === "rejected") return "reddedildi";
+  return "bekleyen";
+}
 
 export default function TekliflerPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -68,57 +70,29 @@ export default function TekliflerPage() {
   // CANLI BACKEND BAGLANTISI (api/bids)
   
   const fetchTeklifler = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(apiUrl("/api/bids"));
-      if (!res.ok) return;
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        const formatted = data.map((b: any) => ({
-          id: b.id,
-          listingTitle: b.listingTitle || "Sanayi Malzeme İlanı #" + b.listingId,
-          offeredBy: b.buyerCompanyName || "Alıcı #" + b.buyerId,
-          offerAmount: b.amount,
-          marketMedian: b.price ? b.price * 0.98 : 0,
-          totalPrice: b.totalPrice ? b.totalPrice.toLocaleString("tr-TR") + " ₺" : "0 ₺",
-          incoterm: b.incoterm || "EXW - Fabrika Teslim",
-          paymentType: b.paymentType || "Peşin",
-          buyerNote: b.buyerNote || "",
-          expiresIn: b.expiresIn || "24s",
-          date: b.createdAt ? new Date(b.createdAt).toLocaleDateString("tr-TR") : "Bugün",
-          status: (b.status && (b.status.toLowerCase() === "onaylandi" || b.status.toLowerCase() === "onaylandı" || b.status.toLowerCase() === "approved" || b.status.toLowerCase() === "onaylanan")) ? "onaylanan" : (b.status && (b.status.toLowerCase() === "reddedildi" || b.status.toLowerCase() === "rejected")) ? "reddedildi" : "bekleyen",
-          hasCertificate: Boolean(b.hasCertificate)
-        }));
-        setGelenTeklifler(formatted);
+      // Teklifler ve onaylanan işlemler ayrı uçlardan gelir.
+      // Karbon/ağaç verisi YALNIZCA /api/orders içinde bulunur.
+      const [bids, orders] = await Promise.all([
+        apiFetch<Bid[]>("/api/bids"),
+        apiFetch<Order[]>("/api/orders"),
+      ]);
 
-        // Sayfa yenilense bile backend'deki onaylı teklifleri tablo 3'e kalıcı aktar
-        const approvedFromDb = formatted.filter((item: any) => 
-          item.status === "onaylanan" || item.status === "kabul_edildi" || item.status === "approved"
-        );
-        if (typeof setOnaylananIslemler === "function") {
-          setOnaylananIslemler((prev: any[]) => {
-            const combined = [...approvedFromDb, ...prev];
-            const unique = Array.from(new Map(combined.map((item: any) => [item.id, item])).values());
-            return unique;
-          });
-        }
-
-        const verilenFormatted = data.map((b: any) => ({
-          id: b.id,
-          listingTitle: b.listingTitle || "Sanayi Malzeme İlanı #" + b.listingId,
-          ownerCompany: "Firma 1001 San. Tic. Ltd. Şti.",
-          myOffer: b.price || 0,
-          amount: b.amount ? b.amount.toString() : "0",
-          totalPrice: b.totalPrice ? b.totalPrice.toLocaleString("tr-TR") + " ₺" : (b.price * b.amount).toLocaleString("tr-TR") + " ₺",
-          incoterm: b.incoterm || "EXW - Fabrika Teslim",
-          paymentType: b.paymentType || "Peşin",
-          myNote: b.buyerNote || "Standart teklif iletildi.",
-          date: b.createdAt ? new Date(b.createdAt).toLocaleDateString("tr-TR") : "Bugün",
-          status: b.status || "bekleyen"
-        }));
-        setVerilenTeklifler(verilenFormatted.filter((b: any) => b.status !== 'geri_cekildi'));
-      }
+      const bidList = Array.isArray(bids) ? bids : [];
+      setGelenTeklifler(bidList);
+      setVerilenTeklifler(bidList);
+      setOnaylananIslemler(Array.isArray(orders) ? orders : []);
     } catch (err) {
-      console.error("Teklifleri çekme hatası:", err);
+      // Sahte tekliflere DÜŞÜLMEZ.
+      console.error("Teklifler çekilemedi:", err);
+      setGelenTeklifler([]);
+      setVerilenTeklifler([]);
+      setOnaylananIslemler([]);
+      setError("Teklifler sunucudan alınamadı. Lütfen birkaç saniye sonra tekrar deneyin.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -150,72 +124,12 @@ export default function TekliflerPage() {
 
 
 
-  // Gelen Teklifler (Demir-Çelik Sektör Terminolojisine Uyarlı)
-  const [gelenTeklifler, setGelenTeklifler] = useState<Teklif[]>([
-    {
-      id: 101,
-      listingTitle: "10mm S235JR Levha Sac Kesim Artığı (12.500 kg)",
-      offeredBy: "Firma 1005 San. Tic. Ltd. Şti.",
-      offerAmount: 24500,
-      marketMedian: 24000,
-      totalPrice: "₺ 306.250",
-      incoterm: "EXW - Fabrika Teslim",
-      paymentType: "Peşin / Banka Havalesi",
-      buyerNote: "Nakliye firmamıza aittir. Peşin ödemede tamamını hemen alabiliriz.",
-      expiresIn: "14s",
-      date: "Bugün, 14:20",
-      status: "bekleyen",
-      hasCertificate: true,
-    },
-    {
-      id: 102,
-      listingTitle: "DKP Soğuk Haddelenmiş Sac Kırpıntısı (4.800 kg)",
-      offeredBy: "Firma 1012 San. Tic. Ltd. Şti.",
-      offerAmount: 14000,
-      marketMedian: 13500,
-      totalPrice: "₺ 67.200",
-      incoterm: "EXW - Fabrika Teslim",
-      paymentType: "30 Gün Vadeli Çek",
-      buyerNote: "Kantar teslimatından sonra vade başlar.",
-      expiresIn: "2g",
-      date: "Dün, 18:45",
-      status: "onaylanan",
-      hasCertificate: false,
-    },
-  ]);
-
-  // Verdiğim Teklifler
-  const [verilenTeklifler, setVerilenTeklifler] = useState<Teklif[]>([
-    {
-      id: 201,
-      listingTitle: "İmalat Artığı Profil ve Boru Fireleri (3.200 kg)",
-      ownerCompany: "Firma 1008 San. Tic. Ltd. Şti.",
-      myOffer: 55000,
-      amount: "3200",
-      totalPrice: "₺ 176.000",
-      incoterm: "EXW - Fabrika Teslim",
-      paymentType: "Peşin / Banka Havalesi",
-      myNote: "Hemen yükleme yapabiliriz.",
-      date: "Bugün, 11:10",
-      status: "bekleyen",
-    },
-  ]);
-
-  // Onaylanan İşlemlerim Listesi State'i
-  const [onaylananIslemler, setOnaylananIslemler] = useState<Teklif[]>([
-    {
-      id: 301,
-      listingTitle: "DKP Soğuk Haddelenmiş Sac Kırpıntısı (4.800 kg)",
-      otherParty: "Firma 1012 San. Tic. Ltd. Şti.",
-      totalPrice: "₺ 67.200",
-      tonnage: "4.8 Ton",
-      paymentType: "30 Gün Vadeli Çek",
-      incoterm: "EXW - Fabrika Teslim",
-      date: "Bugün, Onaylandı",
-      savedCarbon: "7.2 Ton CO₂e",
-      treeEquivalent: "327 Ağaç"
-    }
-  ]);
+  // Tüm listeler API'den gelir; sabit başlangıç verisi YOKTUR.
+  const [gelenTeklifler, setGelenTeklifler] = useState<Bid[]>([]);
+  const [verilenTeklifler, setVerilenTeklifler] = useState<Bid[]>([]);
+  const [onaylananIslemler, setOnaylananIslemler] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // MÜZAKERE MODALI STATE'İ
   const [bidModal, setBidModal] = useState<{
@@ -380,11 +294,9 @@ export default function TekliflerPage() {
               item.id === bidModal.targetId
                 ? {
                     ...item,
-                    myOffer: Number(bidModal.price),
                     price: Number(bidModal.price),
                     amount: Number(bidModal.amount),
                     buyerNote: bidModal.note,
-                    note: bidModal.note,
                     incoterm: iTerm,
                     paymentType: pType,
                     totalPrice: `${(Number(bidModal.price) * Number(bidModal.amount)).toLocaleString("tr-TR")} ₺`
@@ -435,60 +347,14 @@ export default function TekliflerPage() {
       console.error("Teklif kaydedilemedi:", err);
     }
 
-      const newItem = {
-        id: Date.now(),
-        listingTitle: bidModal.title,
-        ownerCompany: bidModal.company || "Firma 1001 San. Tic. Ltd. Şti.",
-        myOffer: Number(bidModal.price),
-        amount: bidModal.amount,
-        totalPrice: calculatedTotal,
-        incoterm: incotermText,
-        paymentType: paymentText,
-        myNote: bidModal.note || "Standart teklif iletildi.",
-        date: "Bugün, Şimdi",
-        status: "bekleyen",
-      };
-      setVerilenTeklifler([newItem, ...verilenTeklifler]);
+      // Yerel mock-şekilli nesne ÜRETİLMEZ; liste sunucudan yeniden yüklenir.
+      fetchTeklifler();
       setActiveTab("verilen");
       alert("✅ Yeni borsa teklifiniz başarıyla iletildi!");
-    } else if (bidModal.mode === "karsi" && bidModal.targetId) {
-      // Karşı teklif yalnızca GELEN teklifler üzerinde anlamlı ve sonuç
-      // setGelenTeklifler'e yazılıyor; bu yüzden kaynak da gelenTeklifler olmalı.
-      // (Eskiden displayedTeklifler kullanılıyordu: aktif sekme "verilen" ise
-      // gelen teklif listesi yanlış veriyle ezilirdi.)
-      setGelenTeklifler(
-        gelenTeklifler.map((item) =>
-          item.id === bidModal.targetId
-            ? {
-                ...item,
-                offerAmount: Number(bidModal.price),
-                incoterm: incotermText,
-                paymentType: paymentText,
-                buyerNote: `[KARŞI TEKLİF]: ${bidModal.note || "Fiyat revize edildi."}`,
-                totalPrice: calculatedTotal,
-                status: "bekleyen",
-              }
-            : item
-        )
-      );
-      alert("🔄 Karşı teklifiniz ve pazarlık şartlarınız alıcıya iletildi!");
-    } else if (bidModal.mode === "guncelle" && bidModal.targetId) {
-      setVerilenTeklifler(
-        verilenTeklifler.map((item) =>
-          item.id === bidModal.targetId
-            ? {
-                ...item,
-                myOffer: Number(bidModal.price),
-                amount: bidModal.amount,
-                totalPrice: calculatedTotal,
-                incoterm: incotermText,
-                paymentType: paymentText,
-                myNote: bidModal.note || item.myNote,
-              }
-            : item
-        )
-      );
-      alert("✅ Verdiğiniz teklif başarıyla güncellendi!");
+    } else if (bidModal.targetId) {
+      // Karşı teklif / güncelleme sonrası da tek doğruluk kaynağı sunucudur.
+      fetchTeklifler();
+      alert("✅ Teklif güncellendi.");
     }
 
     setBidModal({ ...bidModal, isOpen: false });
@@ -497,13 +363,13 @@ export default function TekliflerPage() {
   const filteredGelen = gelenTeklifler.filter(
     (item) =>
       (item.listingTitle ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.offeredBy ?? "").toLowerCase().includes(searchQuery.toLowerCase())
+      (item.buyerCompanyName ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const filteredVerilen = verilenTeklifler.filter(
     (item) =>
       (item.listingTitle ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.ownerCompany ?? "").toLowerCase().includes(searchQuery.toLowerCase())
+      (item.buyerCompanyName ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   
@@ -514,36 +380,10 @@ export default function TekliflerPage() {
     : gelenTeklifler;
 
   
-  // Backend'den onaylanan teklifleri de Onaylanan İşlemlerim sekmesine dahil et
-  const backendOnaylananlar = gelenTeklifler
-    .filter((item: any) => item.status === "approved" || (String(item.status).toLowerCase().includes("onay")) || ((String(item.status).toLowerCase().includes("onay")) || item.status === "onaylanan"))
-    .map((item: any) => ({
-      id: item.id,
-      listingTitle: item.listingTitle || item.title || "Onaylanan Hammadde",
-      otherParty: item.company || item.otherParty || "Alıcı Firma",
-      totalPrice: item.price ? `₺ ${(Number(item.price) * (Number(item.amount) || 1)).toLocaleString("tr-TR")}` : "Belirtilmedi",
-      tonnage: item.amount ? `${item.amount} ${item.unit || "Ton"}` : "1 Ton",
-      paymentType: item.paymentTerm || "Peşin",
-      incoterm: item.incoterm || "FOB",
-      date: "Bugün, Onaylandı",
-      isBackend: true
-    }));
 
-  const tumOnaylananlar = gelenTeklifler
-    .filter((item: any) => {
-      const s = String(item.status || "").toLowerCase();
-      return s.includes("onay") || s === "approved";
-    })
-    .map((item: any): Teklif => ({
-      id: item.id,
-      listingTitle: item.listingTitle || item.title || "Onaylanan Malzeme",
-      otherParty: item.company || item.offeredBy || "Alıcı Firma",
-      totalPrice: item.totalPrice || (item.price ? ("₺ " + (Number(item.price) * (Number(item.amount) || 1)).toLocaleString("tr-TR")) : "₺ 0"),
-      tonnage: item.offerAmount ? (item.offerAmount + " " + (item.unit || "Ton")) : (item.amount ? (item.amount + " Ton") : "1 Ton"),
-      paymentType: item.paymentType || "Peşin",
-      incoterm: item.incoterm || "EXW - Fabrika Teslim",
-      date: "Onaylandı"
-    }));
+
+  // Onaylanan işlemler /api/orders uçundan gelir (karbon/ağaç verisi orada).
+  const tumOnaylananlar = onaylananIslemler;
 
   
 
@@ -672,7 +512,25 @@ export default function TekliflerPage() {
           </div>
 
           {/* TAB 1: GELEN TEKLİFLER */}
-          {activeTab === "gelen" && (
+          {loading && (
+        <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-2 w-full">
+          <div className="inline-block w-6 h-6 border-2 border-slate-200 border-t-[#123873] rounded-full animate-spin" />
+          <h3 className="font-bold text-slate-800 text-sm pt-2">Teklifler yükleniyor...</h3>
+          <p className="text-xs text-slate-400">Sunucu bir süredir boştaysa ilk yanıt birkaç saniye sürebilir.</p>
+        </div>
+      )}
+
+      {!loading && error && (
+        <div className="bg-white p-12 text-center rounded-2xl border border-red-200 space-y-2 w-full">
+          <span className="text-3xl">⚠️</span>
+          <h3 className="font-bold text-red-700 text-sm">{error}</h3>
+          <button onClick={fetchTeklifler} className="mt-2 text-xs font-bold text-[#123873] hover:underline">
+            Tekrar Dene
+          </button>
+        </div>
+      )}
+
+      {!loading && !error && activeTab === "gelen" && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 w-full">
               <h3 className="font-bold text-sm text-slate-900 px-2">
                 İlanlarına Gelen Resmi Teklifler & Ticari Müzakereler
@@ -697,7 +555,7 @@ export default function TekliflerPage() {
                     <td className="py-4 px-3">
                       <p className="font-bold text-slate-900">{item.listingTitle}</p>
                       <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                        🏢 {item.offeredBy}
+                        🏢 {item.buyerCompanyName ?? "Bilinmiyor"}
                       </p>
                     </td>
                     <td className="py-4 px-3">
@@ -789,7 +647,7 @@ export default function TekliflerPage() {
 
           
       {/* TAB 2: VERDİĞİM TEKLİFLER */}
-      {activeTab === "verilen" && (
+      {!loading && !error && activeTab === "verilen" && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 w-full">
           <div>
             <h3 className="font-bold text-sm text-slate-900 px-2">
@@ -802,7 +660,7 @@ export default function TekliflerPage() {
               <thead>
                 <tr className="border-b border-slate-100 text-slate-400 font-bold pb-3 uppercase text-[10px] tracking-wider">
                   <th className="pb-3 px-3">İLAN ADI</th>
-                  <th className="pb-3 px-3">İLAN SAHİBİ FİRMA</th>
+                  <th className="pb-3 px-3">TEKLİF VEREN</th>
                   <th className="pb-3 px-3">VERDİĞİM TEKLİF</th>
                   <th className="pb-3 px-3">TESLİMAT & TOPLAM</th>
                   <th className="pb-3 px-3">NOTUM</th>
@@ -814,16 +672,16 @@ export default function TekliflerPage() {
                 {filteredVerilen.map((item: any) => (
                   <tr key={item.id} className="hover:bg-slate-50/70 transition">
                     <td className="py-4 px-3 font-bold text-slate-900">{item.listingTitle}</td>
-                    <td className="py-4 px-3 text-slate-600 font-semibold">🏢 {item.ownerCompany}</td>
+                    <td className="py-4 px-3 text-slate-600 font-semibold">🏢 {item.buyerCompanyName ?? "Bilinmiyor"}</td>
                     <td className="py-4 px-3 font-black text-[#123873] text-sm">
-                      ₺ {item.myOffer ? Number(item.myOffer).toLocaleString("tr-TR") : (item.price ? Number(item.price).toLocaleString("tr-TR") : "0")} / Ton
+                      ₺ {Number(item.price ?? 0).toLocaleString("tr-TR", { minimumFractionDigits: 2 })} / {item.unit ?? "kg"}
                     </td>
                     <td className="py-4 px-3">
-                      <span className="font-black text-slate-900 block">{item.totalPrice}</span>
+                      <span className="font-black text-slate-900 block">₺ {Number(item.totalPrice ?? 0).toLocaleString("tr-TR", { maximumFractionDigits: 0 })}</span>
                       <span className="text-[10px] text-slate-400 font-semibold">{item.incoterm || "FOB"}</span>
                     </td>
                     <td className="py-4 px-3 text-slate-500 text-xs">
-                      💬 {item.buyerNote || item.note || "Standart teklif iletildi."}
+                      💬 {item.buyerNote || "Not yok"}
                     </td>
                     <td className="py-4 px-3">
                       <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full border border-blue-200 inline-flex items-center gap-1">
@@ -839,9 +697,9 @@ export default function TekliflerPage() {
                             mode: "guncelle",
                             targetId: item.id,
                             title: item.listingTitle || "Malzeme Teklifi",
-                            company: item.ownerCompany || "Firma",
-                            price: String(item.myOffer || item.price || ""),
-                            amount: String(item.amount || item.offerAmount || "1"),
+                            company: item.buyerCompanyName || "Firma",
+                            price: String(item.price ?? ""),
+                            amount: String(item.amount ?? "1"),
                             paymentType: "pesin",
                             incoterm: "exw",
                             note: item.buyerNote || ""
@@ -875,7 +733,7 @@ export default function TekliflerPage() {
       )}
 
       {/* TAB 3: ONAYLANAN İŞLEMLERİM */}
-          {activeTab === "onaylanan" && (
+          {!loading && !error && activeTab === "onaylanan" && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 w-full">
               <div className="flex justify-between items-center border-b border-slate-100 pb-3 px-2">
                 <div>
@@ -903,19 +761,19 @@ export default function TekliflerPage() {
                       <tr key={item.id} className="hover:bg-slate-50/70 transition">
                         <td className="py-4 px-3">
                           <p className="font-bold text-slate-900">{item.listingTitle}</p>
-                          <p className="text-[11px] text-slate-500 font-semibold mt-0.5">🤝 İş Yapılan: {item.otherParty}</p>
+                          <p className="text-[11px] text-slate-500 font-semibold mt-0.5">🤝 Malzeme: {item.materialType ?? "—"}</p>
                         </td>
                         <td className="py-4 px-3">
-                          <span className="font-black text-slate-900 block">{item.totalPrice}</span>
-                          <span className="text-[10px] text-slate-400 font-semibold">{item.tonnage}</span>
+                          <span className="font-black text-slate-900 block">₺ {((Number(item.agreedPrice) || 0) * (Number(item.amount) || 0)).toLocaleString("tr-TR", { maximumFractionDigits: 0 })}</span>
+                          <span className="text-[10px] text-slate-400 font-semibold">{Number(item.amount ?? 0).toLocaleString("tr-TR")} kg × ₺{Number(item.agreedPrice ?? 0).toFixed(2)}</span>
                         </td>
                         <td className="py-4 px-3">
-                          <span className="font-bold text-slate-800 block text-[11px]">{item.incoterm}</span>
-                          <span className="text-[10px] text-slate-400">{item.paymentType}</span>
+                          <span className="font-bold text-slate-800 block text-[11px]">{item.paymentMethod ?? "—"}</span>
+                          <span className="text-[10px] text-slate-400">{item.shippingDate ?? ""}</span>
                         </td>
                         <td className="py-4 px-3">
-                          <span className="font-bold text-emerald-600 block">🌱 {item.savedCarbon}</span>
-                          <span className="text-[10px] text-slate-500">~{item.treeEquivalent}</span>
+                          <span className="font-bold text-emerald-600 block">🌱 {Number(item.savedCarbon ?? 0).toLocaleString("tr-TR")} Ton CO₂e</span>
+                          <span className="text-[10px] text-slate-500">~{Number(item.savedTrees ?? 0).toLocaleString("tr-TR")} Ağaç</span>
                         </td>
                         <td className="py-4 px-3 text-right">
                           <button

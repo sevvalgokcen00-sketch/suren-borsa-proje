@@ -3,35 +3,8 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
-import baseData from "../data/islemler.json";
-import { apiUrl } from "@/lib/api";
-
-// Excel veri setindeki resmi ve profesyonel demir-çelik sınıflandırmaları
-const excelAltTurler = [
-  "Standart Dışı Sac / Levha",
-  "İmalat Artığı Profil",
-  "DKP (Soğuk Haddelenmiş Sac Artığı)",
-  "Kalıp Fazlası Parça",
-  "Talaş / Kırpıntı"
-];
-
-const companyList = Array.from({ length: 60 }, (_, i) => `Firma ${1001 + i} San. Tic. Ltd. Şti.`);
-const cityList = ["Adana", "Bursa", "Eskişehir", "Gaziantep", "İstanbul", "İzmir", "Kocaeli", "Konya", "Manisa", "Sakarya"];
-
-const materialsData = Array.from({ length: 391 }, (_, i) => {
-  const original: any = (baseData as any[])[i % baseData.length] || {};
-  const idNumber = String(i + 1).padStart(5, '0');
-  return {
-    ...original,
-    id: `T-${idNumber}`,
-    title: excelAltTurler[i % excelAltTurler.length],
-    company: companyList[i % companyList.length],
-    location: original.location || cityList[i % cityList.length],
-    hasCertificate: i % 2 === 0, 
-    amount: `${( (i * 147) % 4500 + 300 ).toLocaleString("tr-TR")} kg`,
-    price: `₺ ${((i * 1.3) % 18 + 9.5).toFixed(2)} / kg`
-  };
-});
+import { apiUrl, apiFetch } from "@/lib/api";
+import { Listing, listingMaterial, listingCity } from "@/lib/types";
 
 export default function IlanlarPaneli() {
   const [activeTab, setActiveTab] = useState<"aktif" | "benim">("aktif");
@@ -40,40 +13,39 @@ export default function IlanlarPaneli() {
   
   const [aktifListings, setAktifListings] = useState<any[]>([]);
   const [benimListings, setBenimListings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-        const loadListings = async () => {
+  const loadListings = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const res = await fetch(apiUrl("/api/listings"));
-      if (res.ok) {
-        const raw = await res.json();
-        const rawList = Array.isArray(raw) ? raw : (raw.value || raw.listings || []);
-        
-        if (rawList.length > 0) {
-          const formatted = rawList.map((item: any) => ({
-            id: item.id ? String(item.id) : "1",
-            title: item.title || item.material_type || "Demir - Çelik Kırpıntı",
-            amount: item.weight || item.amount || 0,
-            price: item.price || 0,
-            hasCertificate: item.hasCertificate === 1 || item.hasCertificate === true || true,
-            location: item.city || item.locationCity || "Kocaeli",
-            status: item.status || "Aktif",
-            material_type: item.material_type || ""
-          }));
+      const rawList = await apiFetch<Listing[]>("/api/listings");
+      const formatted = (Array.isArray(rawList) ? rawList : []).map((item) => ({
+        id: String(item.id),
+        title: item.title || listingMaterial(item),
+        amount: item.weight ?? 0,
+        price: item.price ?? 0,
+        location: listingCity(item),
+        status: item.status || "Aktif",
+        material_type: listingMaterial(item),
+      }));
 
-          // En büyük id (en yeni eklenen) en üstte olacak şekilde sırala
-          formatted.sort((a: any, b: any) => Number(a.id) - Number(b.id));
+      // En yeni ilan en üstte
+      formatted.sort((a, b) => Number(b.id) - Number(a.id));
 
-          setAktifListings(formatted);
-          setBenimListings(formatted);
-        } else {
-          setAktifListings(materialsData.slice(0, 15));
-          setBenimListings(materialsData.slice(15, 20));
-        }
-      }
+      setAktifListings(formatted);
+      setBenimListings(formatted);
     } catch (err) {
+      // SESSİZ MOCK FALLBACK KALDIRILDI: var olmayan ilanları gerçekmiş gibi
+      // göstermek, hatayı göstermekten çok daha kötüdür (çalışan sayfa ile
+      // bozuk sayfa ayırt edilemez hale gelir).
       console.error("İlanlar çekilemedi:", err);
-      setAktifListings(materialsData.slice(0, 15));
-      setBenimListings(materialsData.slice(15, 20));
+      setAktifListings([]);
+      setBenimListings([]);
+      setError("İlanlar sunucudan alınamadı. Lütfen birkaç saniye sonra tekrar deneyin.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -324,6 +296,33 @@ export default function IlanlarPaneli() {
                     ))}
                 </tbody>
               </table>
+
+              {/* YÜKLENİYOR / HATA / BOŞ DURUMLARI */}
+              {loading && (
+                <div className="py-10 text-center space-y-2">
+                  <div className="inline-block w-5 h-5 border-2 border-slate-200 border-t-[#123873] rounded-full animate-spin" />
+                  <p className="text-xs text-slate-400 font-semibold pt-1">İlanlar yükleniyor...</p>
+                </div>
+              )}
+
+              {!loading && error && (
+                <div className="py-10 text-center space-y-2">
+                  <span className="text-2xl">⚠️</span>
+                  <p className="text-xs font-bold text-red-700">{error}</p>
+                  <button onClick={loadListings} className="text-xs font-bold text-[#123873] hover:underline">
+                    Tekrar Dene
+                  </button>
+                </div>
+              )}
+
+              {!loading && !error && currentListings.length === 0 && (
+                <div className="py-10 text-center space-y-1">
+                  <span className="text-2xl">📭</span>
+                  <p className="text-xs font-bold text-slate-700">Henüz ilan yok.</p>
+                  <p className="text-[11px] text-slate-400">Yeni bir ilan oluşturduğunuzda burada görünecek.</p>
+                </div>
+              )}
+
             </div>
 
           </div>

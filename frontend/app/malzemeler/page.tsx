@@ -1,101 +1,165 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import Sidebar from "../../components/Sidebar";
 import SteelPriceIndex from "../../components/SteelPriceIndex";
-import baseData from "../data/islemler.json";
+import { apiFetch } from "@/lib/api";
+import {
+  Listing,
+  listingMaterial,
+  listingCity,
+  listingCondition,
+  listingWeight,
+  listingPrice,
+  listingImages,
+} from "@/lib/types";
 
-// Excel Dosyasındaki (Ham_Veri) Resmi Demir-Çelik ve İşlenmemiş Üretim Artığı Sınıflandırmaları
-const excelAltTurler = [
-  "Standart Dışı Sac / Levha",
-  "İmalat Artığı Profil",
-  "DKP (Soğuk Haddelenmiş Sac Artığı)",
-  "Kalıp Fazlası Parça",
-  "Talaş / Kırpıntı"
-];
+/**
+ * MALZEME LİSTELEME — GET /api/listings
+ *
+ * FİLTRELEME STRATEJİSİ (neden bazıları sunucuda, bazıları istemcide):
+ *
+ *   search      -> SUNUCU (?search=)      title + description üzerinde LIKE. Sorunsuz.
+ *   kondisyon   -> SUNUCU (?materialType=) DİKKAT: parametre adı yanıltıcı, backend
+ *                  bunu usageStatus KOLONUNA uyguluyor (listings.js:49).
+ *   min/maxPrice-> SUNUCU (?minPrice=&maxPrice=) Sorunsuz.
+ *
+ *   malzeme türü-> İSTEMCİ. Backend'de material_type/materialType için sorgu
+ *                  parametresi YOK.
+ *   şehir       -> İSTEMCİ. Backend ?city= parametresini locationCity kolonuna
+ *                  uyguluyor, ancak POST /api/listings yalnızca `city` kolonunu
+ *                  yazıyor; locationCity NULL kalıyor. Sunucu tarafı kullanılsaydı
+ *                  uygulama üzerinden oluşturulan ilanlar şehir filtresinde
+ *                  KAYBOLURDU. İstemcide city ?? locationCity ile eşleştiriyoruz.
+ */
 
-// Excel Dosyasındaki Resmi Malzeme Durumları (Kondisyonlar)
-const materialConditions = [
-  "Üretim Fazlası",
-  "Kesim/İşleme Artığı",
-  "Temiz",
-  "Orijinal Ambalajında Fazla Stok",
-  "Standart Dışı Üretim"
-];
-
-const packagingTypes = ["Gevşek", "Preslenmiş-Balya", "Parçalanmış"]; 
-const companyList = Array.from({ length: 60 }, (_, i) => `Firma ${1001 + i} San. Tic. Ltd. Şti.`);
-const cityList = ["Adana", "Bursa", "Eskişehir", "Gaziantep", "İstanbul", "İzmir", "Kocaeli", "Konya", "Manisa", "Sakarya"];
-
-const materialsData = Array.from({ length: 391 }, (_, i) => {
-  const original = (baseData as any[])[i % baseData.length] || {};
-  const idNumber = String(i + 1).padStart(5, "0");
-  return {
-    ...original,
-    id: `T-${idNumber}`,
-    title: excelAltTurler[i % excelAltTurler.length],
-    company: companyList[i % companyList.length], 
-    condition: materialConditions[i % materialConditions.length],
-    packaging: packagingTypes[i % packagingTypes.length], 
-    location: original.location || cityList[i % cityList.length]
-  };
-});
+const HEPSI = "Hepsi";
 
 export default function Malzemeler() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showIndex, setShowIndex] = useState(true);
 
-  const [selectedMaterialType, setSelectedMaterialType] = useState("Hepsi");
-  const [selectedCompany, setSelectedCompany] = useState("Hepsi");
-  const [selectedCondition, setSelectedCondition] = useState("Hepsi");
-  const [selectedCity, setSelectedCity] = useState("Hepsi");
-  const [selectedPackaging, setSelectedPackaging] = useState("Hepsi");
+  // Sunucudan gelen ilanlar
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const [appliedFilters, setAppliedFilters] = useState({
-    materialType: "Hepsi",
-    company: "Hepsi",
-    condition: "Hepsi",
-    city: "Hepsi",
-    packaging: "Hepsi"
+  // Açılır liste seçenekleri filtresiz veri kümesinden türetilir; böylece bir
+  // filtre uygulandığında seçenekler kaybolmaz.
+  const [optionSource, setOptionSource] = useState<Listing[]>([]);
+
+  // Form durumu (henüz uygulanmamış seçimler)
+  const [searchText, setSearchText] = useState("");
+  const [selectedMaterialType, setSelectedMaterialType] = useState(HEPSI);
+  const [selectedCondition, setSelectedCondition] = useState(HEPSI);
+  const [selectedCity, setSelectedCity] = useState(HEPSI);
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+
+  // Uygulanmış istemci tarafı filtreler
+  const [appliedClient, setAppliedClient] = useState({
+    materialType: HEPSI,
+    city: HEPSI,
   });
 
-  const materials = Array.isArray(materialsData) ? materialsData : [];
+  const loadListings = useCallback(
+    async (opts?: {
+      search?: string;
+      condition?: string;
+      minPrice?: string;
+      maxPrice?: string;
+      isInitial?: boolean;
+    }) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const qs = new URLSearchParams();
+        if (opts?.search) qs.set("search", opts.search);
+        // Backend bu parametreyi usageStatus kolonuna uygular (yukarıdaki nota bakın)
+        if (opts?.condition && opts.condition !== HEPSI) qs.set("materialType", opts.condition);
+        if (opts?.minPrice) qs.set("minPrice", opts.minPrice);
+        if (opts?.maxPrice) qs.set("maxPrice", opts.maxPrice);
 
-  const filteredMaterials = materials.filter((item: any) => {
-    const matchesMaterial = appliedFilters.materialType === "Hepsi" || item.title === appliedFilters.materialType;
-    const matchesCompany = appliedFilters.company === "Hepsi" || item.company === appliedFilters.company;
-    const matchesCondition = appliedFilters.condition === "Hepsi" || item.condition === appliedFilters.condition;
-    const matchesPackaging = appliedFilters.packaging === "Hepsi" || item.packaging === appliedFilters.packaging;
-    const matchesCity = appliedFilters.city === "Hepsi" || (item.location && item.location.toLowerCase() === appliedFilters.city.toLowerCase());
+        const query = qs.toString();
+        const data = await apiFetch<Listing[]>(`/api/listings${query ? `?${query}` : ""}`);
+        const rows = Array.isArray(data) ? data : [];
+        setListings(rows);
+        if (opts?.isInitial) setOptionSource(rows);
+      } catch (err) {
+        console.error("İlanlar çekilemedi:", err);
+        // Sahte veriye DÜŞÜLMEZ: var olmayan ilanlar göstermek, hatayı
+        // göstermekten daha kötüdür.
+        setListings([]);
+        setError(
+          err instanceof Error
+            ? "İlanlar sunucudan alınamadı. Lütfen birkaç saniye sonra tekrar deneyin."
+            : "Bilinmeyen bir hata oluştu."
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
-    return matchesMaterial && matchesCompany && matchesCondition && matchesPackaging && matchesCity;
-  });
+  useEffect(() => {
+    loadListings({ isInitial: true });
+  }, [loadListings]);
+
+  // Açılır liste seçenekleri gerçek veriden türetilir (sabit liste yok)
+  const materialTypeOptions = useMemo(
+    () => Array.from(new Set(optionSource.map(listingMaterial))).sort((a, b) => a.localeCompare(b, "tr")),
+    [optionSource]
+  );
+  const conditionOptions = useMemo(
+    () =>
+      Array.from(new Set(optionSource.map((l) => l.usageStatus).filter((v): v is string => !!v))).sort((a, b) =>
+        a.localeCompare(b, "tr")
+      ),
+    [optionSource]
+  );
+  const cityOptions = useMemo(
+    () => Array.from(new Set(optionSource.map(listingCity))).sort((a, b) => a.localeCompare(b, "tr")),
+    [optionSource]
+  );
+
+  // İstemci tarafı filtreler (bkz. dosya başındaki strateji notu)
+  const visibleListings = useMemo(
+    () =>
+      listings.filter((l) => {
+        const matchesMaterial =
+          appliedClient.materialType === HEPSI || listingMaterial(l) === appliedClient.materialType;
+        const matchesCity = appliedClient.city === HEPSI || listingCity(l) === appliedClient.city;
+        return matchesMaterial && matchesCity;
+      }),
+    [listings, appliedClient]
+  );
 
   const handleApplyFilters = () => {
-    setAppliedFilters({
-      materialType: selectedMaterialType,
-      company: selectedCompany,
+    setAppliedClient({ materialType: selectedMaterialType, city: selectedCity });
+    loadListings({
+      search: searchText.trim(),
       condition: selectedCondition,
-      city: selectedCity,
-      packaging: selectedPackaging
+      minPrice: minPrice.trim(),
+      maxPrice: maxPrice.trim(),
     });
   };
 
   const handleClearFilters = () => {
-    setSelectedMaterialType("Hepsi");
-    setSelectedCompany("Hepsi");
-    setSelectedCondition("Hepsi");
-    setSelectedCity("Hepsi");
-    setSelectedPackaging("Hepsi");
-    setAppliedFilters({
-      materialType: "Hepsi",
-      company: "Hepsi",
-      condition: "Hepsi",
-      city: "Hepsi",
-      packaging: "Hepsi"
-    });
+    setSearchText("");
+    setSelectedMaterialType(HEPSI);
+    setSelectedCondition(HEPSI);
+    setSelectedCity(HEPSI);
+    setMinPrice("");
+    setMaxPrice("");
+    setAppliedClient({ materialType: HEPSI, city: HEPSI });
+    loadListings({ isInitial: true });
   };
+
+  const selectClass =
+    "w-full bg-slate-50 border border-slate-200 text-xs px-3.5 py-2.5 rounded-xl outline-none focus:border-[#1E314A] cursor-pointer font-bold text-slate-700";
+  const labelClass = "text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5";
 
   return (
     <div className="min-h-screen bg-[#f8fafc] font-sans flex text-slate-800">
@@ -118,18 +182,17 @@ export default function Malzemeler() {
                   <div className="w-8 h-8 rounded-full bg-[#1E314A] text-white font-bold flex items-center justify-center text-xs">
                     AY
                   </div>
-                  <div>
-                    <p className="font-bold text-slate-900 leading-tight">Ahmet Yılmaz</p>
-                    <p className="text-[10px] text-slate-400">Döngü Metal A.Ş.</p>
-                  </div>
+                  <button onClick={() => setIsLoggedIn(false)} className="font-bold text-slate-500 hover:text-red-500 transition">
+                    Çıkış
+                  </button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Link href="/giris-yap" className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm">
+                  <Link href="/giris-yap" className="font-bold text-slate-600 hover:text-[#1E314A] transition px-3 py-2">
                     Giriş Yap
                   </Link>
                   <Link href="/kayit-ol" className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm">
-                    Kayıt Ol
+                    Üye Ol
                   </Link>
                 </div>
               )}
@@ -137,32 +200,25 @@ export default function Malzemeler() {
           </div>
         </header>
 
-        {/* ANA MALZEMELER İÇERİĞİ (ENİNE GENİŞLETİLDİ) */}
-        <main className="w-full px-4 md:px-8 py-8 space-y-6 flex-1">
-          
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-500">
-                📈 Medyan Referans Fiyat Endeksi
-              </span>
-              <button onClick={() => setShowIndex(!showIndex)} className="text-xs text-[#1E314A] font-bold hover:underline">
-                {showIndex ? "▲ Endeksi Gizle" : "▼ Piyasa Endeksini Göster"}
-              </button>
+        <main className="flex-1 p-6 space-y-5 w-full">
+          {showIndex && (
+            <div className="w-full">
+              <SteelPriceIndex />
             </div>
-            {showIndex && <SteelPriceIndex />}
-          </div>
+          )}
 
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-xl font-bold text-slate-900">
-                Demir-Çelik Malzeme Kataloğu ({filteredMaterials.length} Sonuç)
-              </h1>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight">İkincil Hammadde Borsası</h1>
               <p className="text-xs text-slate-400 mt-0.5">
                 Fabrikalardan arta kalan işlenmemiş ham üretim artığı ve kesim firelerini filtrelere göre listeliyoruz.
               </p>
             </div>
 
-            <Link href="/ilan-ver" className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5">
+            <Link
+              href="/ilan-ver"
+              className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5"
+            >
               <span>+</span> Malzeme İlanı Ekle
             </Link>
           </div>
@@ -171,79 +227,79 @@ export default function Malzemeler() {
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4 w-full">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Malzeme Tipi / İlan Adı
-                </label>
-                <select
-                  value={selectedMaterialType}
-                  onChange={(e) => setSelectedMaterialType(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-xs px-3.5 py-2.5 rounded-xl outline-none focus:border-[#1E314A] cursor-pointer font-bold text-slate-700"
-                >
-                  <option value="Hepsi">Tüm Malzemeler</option>
-                  {excelAltTurler.map(type => <option key={type} value={type}>{type}</option>)}
+                <label className={labelClass}>İlan Ara (Başlık / Açıklama)</label>
+                <input
+                  type="text"
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleApplyFilters()}
+                  placeholder="örn. sac, profil, hurda"
+                  className="w-full bg-slate-50 border border-slate-200 text-xs px-3.5 py-2.5 rounded-xl outline-none focus:border-[#1E314A] font-bold text-slate-700 placeholder:font-medium placeholder:text-slate-400"
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Malzeme Tipi</label>
+                <select value={selectedMaterialType} onChange={(e) => setSelectedMaterialType(e.target.value)} className={selectClass}>
+                  <option value={HEPSI}>Tüm Malzemeler</option>
+                  {materialTypeOptions.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Tedarikçi Firma Seçimi
-                </label>
-                <select
-                  value={selectedCompany}
-                  onChange={(e) => setSelectedCompany(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-xs px-3.5 py-2.5 rounded-xl outline-none focus:border-[#1E314A] cursor-pointer font-bold text-slate-700"
-                >
-                  <option value="Hepsi">Tüm Firmalar</option>
-                  {companyList.map(company => <option key={company} value={company}>{company}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Paketleme Biçimi
-                </label>
-                <select
-                  value={selectedPackaging}
-                  onChange={(e) => setSelectedPackaging(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-xs px-3.5 py-2.5 rounded-xl outline-none focus:border-[#1E314A] cursor-pointer font-bold text-slate-700"
-                >
-                  <option value="Hepsi">Tüm Paketlemeler</option>
-                  {packagingTypes.map(pack => <option key={pack} value={pack}>{pack}</option>)}
+                <label className={labelClass}>Malzeme Durumu (Kondisyon)</label>
+                <select value={selectedCondition} onChange={(e) => setSelectedCondition(e.target.value)} className={selectClass}>
+                  <option value={HEPSI}>Tüm Durumlar</option>
+                  {conditionOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-100 pt-4 items-end">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Malzeme Durumu (Kondisyon)
-                </label>
-                <select
-                  value={selectedCondition}
-                  onChange={(e) => setSelectedCondition(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-xs px-3.5 py-2.5 rounded-xl outline-none focus:border-[#1E314A] cursor-pointer font-bold text-[#1E314A]"
-                >
-                  <option value="Hepsi">Tüm Durumlar</option>
-                  {materialConditions.map(cond => <option key={cond} value={cond}>{cond}</option>)}
+                <label className={labelClass}>Depo / Teslimat Konumu</label>
+                <select value={selectedCity} onChange={(e) => setSelectedCity(e.target.value)} className={selectClass}>
+                  <option value={HEPSI}>📍 Tüm Şehirler</option>
+                  {cityOptions.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Depo / Teslimat Konumu
-                </label>
-                <select
-                  value={selectedCity}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 text-xs px-3.5 py-2.5 rounded-xl outline-none focus:border-[#1E314A] cursor-pointer font-bold text-slate-700"
-                >
-                  <option value="Hepsi">📍 Şehirler</option>
-                  {cityList.map(city => <option key={city} value={city}>{city}</option>)}
-                </select>
+                <label className={labelClass}>Birim Fiyat Aralığı (₺/kg)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={minPrice}
+                    onChange={(e) => setMinPrice(e.target.value)}
+                    placeholder="En az"
+                    className="w-1/2 bg-slate-50 border border-slate-200 text-xs px-3 py-2.5 rounded-xl outline-none focus:border-[#1E314A] font-bold text-slate-700 placeholder:font-medium placeholder:text-slate-400"
+                  />
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={maxPrice}
+                    onChange={(e) => setMaxPrice(e.target.value)}
+                    placeholder="En çok"
+                    className="w-1/2 bg-slate-50 border border-slate-200 text-xs px-3 py-2.5 rounded-xl outline-none focus:border-[#1E314A] font-bold text-slate-700 placeholder:font-medium placeholder:text-slate-400"
+                  />
+                </div>
               </div>
 
               <div className="flex gap-2">
-                <button 
+                <button
                   onClick={handleClearFilters}
                   className="w-1/3 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs transition"
                 >
@@ -252,94 +308,132 @@ export default function Malzemeler() {
                 <button
                   type="button"
                   onClick={handleApplyFilters}
-                  className="w-2/3 bg-[#1E314A] hover:bg-[#152336] text-white font-bold py-2.5 rounded-xl text-xs transition shadow-sm"
+                  disabled={loading}
+                  className="w-2/3 bg-[#1E314A] hover:bg-[#152336] disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl text-xs transition shadow-sm"
                 >
-                  Filtreleri Uygula
+                  {loading ? "Yükleniyor..." : "Filtreleri Uygula"}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* MALZEME KARTLARI GRİDİ (ENİNE GENİŞLETİLDİ) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full">
-            {filteredMaterials.map((item: any) => (
-              <div
-                key={item.id}
-                className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition p-5 flex flex-col justify-between space-y-4 group"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono font-bold text-[#1E314A] bg-[#1E314A]/10 px-2 py-0.5 rounded-md border border-[#1E314A]/20">
-                      {item.id}
-                    </span>
+          {/* YÜKLENİYOR */}
+          {loading && (
+            <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-2 w-full">
+              <div className="inline-block w-6 h-6 border-2 border-slate-200 border-t-[#1E314A] rounded-full animate-spin" />
+              <h3 className="font-bold text-slate-800 text-sm pt-2">İlanlar yükleniyor...</h3>
+              <p className="text-xs text-slate-400">
+                Sunucu bir süredir boştaysa ilk yanıt birkaç saniye sürebilir.
+              </p>
+            </div>
+          )}
 
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-slate-50 text-slate-700 border-slate-200">
-                        {item.condition}
-                      </span>
+          {/* HATA */}
+          {!loading && error && (
+            <div className="bg-white p-12 text-center rounded-2xl border border-red-200 space-y-2 w-full">
+              <span className="text-3xl">⚠️</span>
+              <h3 className="font-bold text-red-700 text-sm">{error}</h3>
+              <button onClick={() => loadListings({ isInitial: true })} className="mt-3 text-xs font-bold text-[#1E314A] hover:underline">
+                Tekrar Dene
+              </button>
+            </div>
+          )}
+
+          {/* MALZEME KARTLARI GRİDİ */}
+          {!loading && !error && visibleListings.length > 0 && (
+            <>
+              <p className="text-[11px] font-bold text-slate-400">{visibleListings.length} ilan listeleniyor</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 w-full">
+                {visibleListings.map((item) => {
+                  const images = listingImages(item);
+                  return (
+                    <div
+                      key={item.id}
+                      className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition flex flex-col justify-between group overflow-hidden"
+                    >
+                      <div className="h-36 bg-slate-100 border-b border-slate-100 flex items-center justify-center overflow-hidden">
+                        {images.length > 0 ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={images[0]} alt={item.title} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="text-center text-slate-300">
+                            <div className="text-3xl">🏭</div>
+                            <div className="text-[10px] font-bold mt-1">Görsel eklenmemiş</div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-5 space-y-4 flex flex-col justify-between flex-1">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-mono font-bold text-[#1E314A] bg-[#1E314A]/10 px-2 py-0.5 rounded-md border border-[#1E314A]/20">
+                              #{item.id}
+                            </span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border bg-slate-50 text-slate-700 border-slate-200">
+                              {listingCondition(item)}
+                            </span>
+                          </div>
+
+                          <div>
+                            <h3 className="font-bold text-base text-slate-900 group-hover:text-[#1E314A] transition line-clamp-2 leading-snug">
+                              {item.title}
+                            </h3>
+                            <p className="text-[11px] text-slate-500 font-medium mt-1.5 flex items-center gap-1 line-clamp-1">
+                              <span>🔩</span> {listingMaterial(item)}
+                              {item.category ? ` · ${item.category}` : ""}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50/80 p-3 rounded-xl border border-slate-100/80 font-medium">
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400">Durum:</span>
+                            <span className="font-bold text-[#1E314A] bg-[#1E314A]/10 px-2 py-0.5 rounded">{item.status || "Aktif"}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400">Kategori:</span>
+                            <span className="font-bold text-slate-700">{item.category || "—"}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400">Stok:</span>
+                            <span className="font-bold text-slate-900">{listingWeight(item)}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400">Konum:</span>
+                            <span className="font-semibold text-slate-700">{listingCity(item)}</span>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-semibold">Birim Fiyat</span>
+                            <span className="text-sm font-black text-slate-900">{listingPrice(item)}</span>
+                          </div>
+
+                          <Link
+                            href={`/malzemeler/detay?id=${item.id}`}
+                            className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm"
+                          >
+                            Görüntüle
+                          </Link>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-bold text-base text-slate-900 group-hover:text-[#1E314A] transition line-clamp-2 leading-snug">
-                      {item.title}
-                    </h3>
-                    <p className="text-[11px] text-slate-500 font-medium mt-1.5 flex items-center gap-1 line-clamp-1">
-                      <span>🏢</span> {item.company}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 text-xs text-slate-600 bg-slate-50/80 p-3 rounded-xl border border-slate-100/80 font-medium">
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Durum:</span>
-                    <span className="font-bold text-[#1E314A] bg-[#1E314A]/10 px-2 py-0.5 rounded">
-                      {item.condition}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Paketleme:</span>
-                    <span className="font-bold text-slate-700">{item.packaging}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Stok:</span>
-                    <span className="font-bold text-slate-900">{item.amount || '10.000 kg'}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-400">Konum:</span>
-                    <span className="font-semibold text-slate-700">{item.location}</span>
-                  </div>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between border-t border-slate-100">
-                  <div>
-                    <span className="text-[10px] text-slate-400 block font-semibold">
-                      Birim Fiyat
-                    </span>
-                    <span className="text-sm font-black text-slate-900">{item.price || '₺12,50/kg'}</span>
-                  </div>
-
-                  <Link href={`/malzemeler/detay?id=${item.id}`} className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm">
-                    Görüntüle
-                  </Link>
-                </div>
+                  );
+                })}
               </div>
-            ))}
-          </div>
+            </>
+          )}
 
-          {filteredMaterials.length === 0 && (
+          {/* BOŞ SONUÇ */}
+          {!loading && !error && visibleListings.length === 0 && (
             <div className="bg-white p-12 text-center rounded-2xl border border-slate-200 space-y-2 w-full">
               <span className="text-3xl">🔍</span>
-              <h3 className="font-bold text-slate-800 text-sm">
-                Aradığınız kriterlerde malzeme bulunamadı.
-              </h3>
+              <h3 className="font-bold text-slate-800 text-sm">Aradığınız kriterlerde ilan bulunamadı.</h3>
               <p className="text-xs text-slate-400">
-                Lütfen seçimlerinizi değiştirip tekrar "Filtreleri Uygula" butonuna basın.
+                Veritabanında bu filtrelere uyan kayıt yok. Seçimlerinizi değiştirip tekrar deneyin.
               </p>
-              <button 
-                onClick={handleClearFilters}
-                className="mt-4 text-xs font-bold text-[#1E314A] hover:underline"
-              >
+              <button onClick={handleClearFilters} className="mt-4 text-xs font-bold text-[#1E314A] hover:underline">
                 Tüm Filtreleri Temizle
               </button>
             </div>
