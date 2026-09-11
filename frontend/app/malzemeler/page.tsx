@@ -319,7 +319,7 @@ export default function Malzemeler() {
                     <span className="text-sm font-black text-slate-900">{item.price || '₺12,50/kg'}</span>
                   </div>
 
-                  <Link href={`/malzemeler/detay?id=${item.id.replace("T-", "")}`} className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm">
+                  <Link href={`/malzemeler/detay?id=${item.id}`} className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl text-xs transition shadow-sm">
                     Görüntüle
                   </Link>
                 </div>

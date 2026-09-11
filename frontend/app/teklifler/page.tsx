@@ -9,6 +9,91 @@ export default function TekliflerPage() {
   const [activeTab, setActiveTab] = useState<"gelen" | "verilen" | "onaylanan">("gelen");
   const [searchQuery, setSearchQuery] = useState("");
 
+  // CANLI BACKEND BAGLANTISI (api/bids)
+  
+  const fetchTeklifler = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/bids");
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        const formatted = data.map((b: any) => ({
+          id: b.id,
+          listingTitle: b.listingTitle || "Sanayi Malzeme İlanı #" + b.listingId,
+          offeredBy: b.buyerCompanyName || "Alıcı #" + b.buyerId,
+          offerAmount: b.amount,
+          marketMedian: b.price ? b.price * 0.98 : 0,
+          totalPrice: b.totalPrice ? b.totalPrice.toLocaleString("tr-TR") + " ₺" : "0 ₺",
+          incoterm: b.incoterm || "EXW - Fabrika Teslim",
+          paymentType: b.paymentType || "Peşin",
+          buyerNote: b.buyerNote || "",
+          expiresIn: b.expiresIn || "24s",
+          date: b.createdAt ? new Date(b.createdAt).toLocaleDateString("tr-TR") : "Bugün",
+          status: (b.status && (b.status.toLowerCase() === "onaylandi" || b.status.toLowerCase() === "onaylandı" || b.status.toLowerCase() === "approved" || b.status.toLowerCase() === "onaylanan")) ? "onaylanan" : (b.status && (b.status.toLowerCase() === "reddedildi" || b.status.toLowerCase() === "rejected")) ? "reddedildi" : "bekleyen",
+          hasCertificate: Boolean(b.hasCertificate)
+        }));
+        setGelenTeklifler(formatted);
+
+        // Sayfa yenilense bile backend'deki onaylı teklifleri tablo 3'e kalıcı aktar
+        const approvedFromDb = formatted.filter((item: any) => 
+          item.status === "onaylanan" || item.status === "kabul_edildi" || item.status === "approved"
+        );
+        if (typeof setOnaylananIslemler === "function") {
+          setOnaylananIslemler((prev: any[]) => {
+            const combined = [...approvedFromDb, ...prev];
+            const unique = Array.from(new Map(combined.map((item: any) => [item.id, item])).values());
+            return unique;
+          });
+        }
+
+        const verilenFormatted = data.map((b: any) => ({
+          id: b.id,
+          listingTitle: b.listingTitle || "Sanayi Malzeme İlanı #" + b.listingId,
+          ownerCompany: "Firma 1001 San. Tic. Ltd. Şti.",
+          myOffer: b.price || 0,
+          amount: b.amount ? b.amount.toString() : "0",
+          totalPrice: b.totalPrice ? b.totalPrice.toLocaleString("tr-TR") + " ₺" : (b.price * b.amount).toLocaleString("tr-TR") + " ₺",
+          incoterm: b.incoterm || "EXW - Fabrika Teslim",
+          paymentType: b.paymentType || "Peşin",
+          myNote: b.buyerNote || "Standart teklif iletildi.",
+          date: b.createdAt ? new Date(b.createdAt).toLocaleDateString("tr-TR") : "Bugün",
+          status: b.status || "bekleyen"
+        }));
+        setVerilenTeklifler(verilenFormatted.filter((b: any) => b.status !== 'geri_cekildi'));
+      }
+    } catch (err) {
+      console.error("Teklifleri çekme hatası:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeklifler();
+  }, []);
+
+
+  // CANLI TEKLİF DURUM GÜNCELLEME (PATCH /api/bids/:id/status)
+  const handleBidStatus = async (bidId: number, newStatus: string) => {
+    // Önce ekranda hemen yansıt
+    setGelenTeklifler((prev: any[]) =>
+      prev.map((item: any) => (item.id === bidId ? { ...item, status: newStatus } : item))
+    );
+    try {
+      const res = await fetch(`http://localhost:5000/api/bids/${bidId}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        // Backend veritabanından kalıcı olarak yeniden yükle
+        fetchTeklifler();
+      }
+    } catch (err) {
+      console.error("Status güncelleme hatası:", err);
+    }
+  };
+
+
+
   // Gelen Teklifler (Demir-Çelik Sektör Terminolojisine Uyarlı)
   const [gelenTeklifler, setGelenTeklifler] = useState([
     {
@@ -161,28 +246,107 @@ export default function TekliflerPage() {
     return diff >= 0 ? `+${diff.toFixed(1)}% Piyasa Üstü` : `${diff.toFixed(1)}% Piyasa Altı`;
   };
 
-  const handleUpdateGelenStatus = (id: number, newStatus: string) => {
-    setGelenTeklifler(
-      gelenTeklifler.map((item) => (item.id === id ? { ...item, status: newStatus } : item))
+  const handleUpdateGelenStatus = async (id: number, newStatus: string) => {
+    // Ekranda gecikme olmadan anında göster
+    setGelenTeklifler((prev: any[]) =>
+      prev.map((item: any) => (item.id === id ? { ...item, status: newStatus } : item))
     );
-  };
-
-  const handleDeleteGelen = (id: number) => {
-    if (confirm("Bu teklifi silmek istediğinize emin misiniz?")) {
-      setGelenTeklifler(gelenTeklifler.filter((item) => item.id !== id));
+    try {
+      // Backend veritabanına kalıcı olarak kaydet
+      await fetch(`http://localhost:5000/api/bids/${id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+    } catch (err) {
+      console.error("Teklif durumu backend güncelleme hatası:", err);
     }
   };
 
-  const handleDeleteVerilen = (id: number) => {
+  const handleDeleteGelen = async (id: any) => {
+    try {
+      await fetch(`http://localhost:5000/api/bids/${id}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error("Teklif silinemedi:", err);
+    }
+    setGelenTeklifler((prev: any[]) => prev.filter((item: any) => item.id !== id));
+  };
+
+  const handleDeleteVerilen = async (id: number) => {
     if (confirm("Bu teklifi geri çekmek istediğinize emin misiniz?")) {
-      setVerilenTeklifler(verilenTeklifler.filter((item) => item.id !== id));
+      // Sayfa yenilenmeden anında tüm sekmelerden kaldır
+      setVerilenTeklifler((prev: any[]) => prev.filter((item: any) => item.id !== id));
+      setGelenTeklifler((prev: any[]) => prev.filter((item: any) => item.id !== id));
+      if (typeof setOnaylananIslemler === "function") {
+        setOnaylananIslemler((prev: any[]) => prev.filter((item: any) => item.id !== id));
+      }
+      try {
+        await fetch(`http://localhost:5000/api/bids/${id}`, { method: "DELETE" });
+        if (typeof fetchTeklifler === "function") {
+          fetchTeklifler();
+        }
+      } catch (err) {
+        console.error("Teklif silme hatası:", err);
+      }
     }
   };
 
-  const handleSaveBidModal = (e: React.FormEvent) => {
+  const handleSaveBidModal = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bidModal.title || !bidModal.price || !bidModal.amount) {
-      alert("Lütfen zorunlu alanları doldurun!");
+    if (!bidModal.price || !bidModal.amount) {
+      alert("Lütfen fiyat ve miktar alanlarını doldurunuz!");
+      return;
+    }
+
+    const pType = bidModal.paymentType === "pesin" ? "Peşin / Banka Havalesi" : "30 Gün Vadeli Çek";
+    const iTerm = (bidModal.incoterm || "EXW").toUpperCase();
+
+    if (bidModal.mode === "guncelle" && bidModal.targetId) {
+      try {
+        const response = await fetch(`http://localhost:5000/api/bids/${bidModal.targetId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            price: Number(bidModal.price),
+            amount: Number(bidModal.amount),
+            buyerNote: bidModal.note || "",
+            paymentType: pType,
+            incoterm: iTerm
+          })
+        });
+
+        if (response.ok) {
+          // Tabloda anında görsel güncelleme yap
+          setVerilenTeklifler((prev: any[]) =>
+            prev.map((item: any) =>
+              item.id === bidModal.targetId
+                ? {
+                    ...item,
+                    myOffer: Number(bidModal.price),
+                    price: Number(bidModal.price),
+                    amount: Number(bidModal.amount),
+                    buyerNote: bidModal.note,
+                    note: bidModal.note,
+                    incoterm: iTerm,
+                    paymentType: pType,
+                    totalPrice: `${(Number(bidModal.price) * Number(bidModal.amount)).toLocaleString("tr-TR")} ₺`
+                  }
+                : item
+            )
+          );
+          if (typeof fetchTeklifler === "function") {
+            fetchTeklifler();
+          }
+          setBidModal((prev: any) => ({ ...prev, isOpen: false }));
+          alert("Pazarlık teklifiniz başarıyla güncellendi!");
+        } else {
+          alert("Güncelleme sırasında bir sorun oluştu.");
+        }
+      } catch (err) {
+        console.error("Teklif güncelleme hatası:", err);
+      }
       return;
     }
 
@@ -197,6 +361,24 @@ export default function TekliflerPage() {
       bidModal.incoterm === "exw" ? "EXW - Fabrika Teslim" : "DDP - Adrese Teslim";
 
     if (bidModal.mode === "yeni") {
+    try {
+      await fetch("http://localhost:5000/api/bids", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listingId: 1,
+          price: Number(bidModal.price),
+          amount: Number(bidModal.amount),
+          buyerCompanyName: "Demir Ticaret A.Ş.",
+          buyerNote: bidModal.note || "Standart teklif iletildi.",
+          status: "bekleyen"
+        })
+      });
+      fetchTeklifler();
+    } catch (err) {
+      console.error("Teklif kaydedilemedi:", err);
+    }
+
       const newItem = {
         id: Date.now(),
         listingTitle: bidModal.title,
@@ -215,7 +397,7 @@ export default function TekliflerPage() {
       alert("✅ Yeni borsa teklifiniz başarıyla iletildi!");
     } else if (bidModal.mode === "karsi" && bidModal.targetId) {
       setGelenTeklifler(
-        gelenTeklifler.map((item) =>
+        displayedTeklifler.map((item) =>
           item.id === bidModal.targetId
             ? {
                 ...item,
@@ -263,6 +445,47 @@ export default function TekliflerPage() {
       item.listingTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.ownerCompany.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  
+  const displayedTeklifler = activeTab === "onaylanan"
+    ? gelenTeklifler.filter(t => t.status === "onaylandi" || t.status === "kabul_edildi")
+    : activeTab === "verilen"
+    ? verilenTeklifler
+    : gelenTeklifler;
+
+  
+  // Backend'den onaylanan teklifleri de Onaylanan İşlemlerim sekmesine dahil et
+  const backendOnaylananlar = gelenTeklifler
+    .filter((item: any) => item.status === "approved" || (String(item.status).toLowerCase().includes("onay")) || ((String(item.status).toLowerCase().includes("onay")) || item.status === "onaylanan"))
+    .map((item: any) => ({
+      id: item.id,
+      listingTitle: item.listingTitle || item.title || "Onaylanan Hammadde",
+      otherParty: item.company || item.otherParty || "Alıcı Firma",
+      totalPrice: item.price ? `₺ ${(Number(item.price) * (Number(item.amount) || 1)).toLocaleString("tr-TR")}` : "Belirtilmedi",
+      tonnage: item.amount ? `${item.amount} ${item.unit || "Ton"}` : "1 Ton",
+      paymentType: item.paymentTerm || "Peşin",
+      incoterm: item.incoterm || "FOB",
+      date: "Bugün, Onaylandı",
+      isBackend: true
+    }));
+
+  const tumOnaylananlar = gelenTeklifler
+    .filter((item: any) => {
+      const s = String(item.status || "").toLowerCase();
+      return s.includes("onay") || s === "approved";
+    })
+    .map((item: any) => ({
+      id: item.id,
+      listingTitle: item.listingTitle || item.title || "Onaylanan Malzeme",
+      otherParty: item.company || item.offeredBy || "Alıcı Firma",
+      totalPrice: item.totalPrice || (item.price ? ("₺ " + (Number(item.price) * (Number(item.amount) || 1)).toLocaleString("tr-TR")) : "₺ 0"),
+      tonnage: item.offerAmount ? (item.offerAmount + " " + (item.unit || "Ton")) : (item.amount ? (item.amount + " Ton") : "1 Ton"),
+      paymentType: item.paymentType || "Peşin",
+      incoterm: item.incoterm || "EXW - Fabrika Teslim",
+      date: "Onaylandı"
+    }));
+
+  
 
   return (
     <div className="min-h-screen bg-[#f8fafc] font-sans flex text-slate-800">
@@ -384,7 +607,7 @@ export default function TekliflerPage() {
                   : "border-transparent text-slate-500 hover:text-slate-800"
               }`}
             >
-              🤝 Onaylanan İşlemlerim ({onaylananIslemler.length})
+              🤝 Onaylanan İşlemlerim ({tumOnaylananlar.length})
             </button>
           </div>
 
@@ -409,232 +632,189 @@ export default function TekliflerPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {filteredGelen.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/70 transition">
-                        <td className="py-4 px-3">
-                          <p className="font-bold text-slate-900">{item.listingTitle}</p>
-                          <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
-                            🏢 {item.offeredBy}
-                          </p>
-                        </td>
-
-                        <td className="py-4 px-3">
-                          <p className="font-black text-[#123873] text-sm">
-                            ₺ {item.offerAmount.toLocaleString("tr-TR")} / Ton
-                          </p>
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded inline-block mt-0.5 ${
-                              item.offerAmount >= item.marketMedian
-                                ? "text-emerald-700 bg-emerald-50"
-                                : "text-amber-700 bg-amber-50"
-                            }`}
+                {filteredGelen.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                    <td className="py-4 px-3">
+                      <p className="font-bold text-slate-900">{item.listingTitle}</p>
+                      <p className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                        🏢 {item.offeredBy}
+                      </p>
+                    </td>
+                    <td className="py-4 px-3">
+                      <span className="font-black text-[#123873] text-sm block">
+                        ₺ {item.price ? Number(item.price).toLocaleString("tr-TR") : "0"} / {item.unit || "Ton"}
+                      </span>
+                      <span className="text-[10px] text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded">
+                        -80% Piyasa Altı
+                      </span>
+                    </td>
+                    <td className="py-4 px-3">
+                      <span className="font-bold text-slate-800 block text-xs">{item.incoterm || "FOB"}</span>
+                      <span className="text-[11px] text-slate-500">{item.paymentType || "Peşin"}</span>
+                    </td>
+                    <td className="py-4 px-3 max-w-xs">
+                      {item.buyerNote ? (
+                        <button
+                          onClick={() => setActiveNoteModal(item.buyerNote)}
+                          className="text-left text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg text-[11px] line-clamp-1 transition font-medium"
+                        >
+                          💬 {item.buyerNote}
+                        </button>
+                      ) : (
+                        <span className="text-slate-300 text-[11px]">- Not Yok -</span>
+                      )}
+                    </td>
+                    <td className="py-4 px-3 font-mono font-bold text-slate-600 text-[11px]">
+                      ⏱ {item.expiresIn || "24s"}
+                    </td>
+                    <td className="py-4 px-3 text-center">
+                      {item.status === "reddedildi" || item.status === "Reddedildi" ? (
+                        <span className="px-2.5 py-1 bg-red-50 text-red-600 text-xs font-semibold rounded-full border border-red-200 inline-flex items-center gap-1">
+                          ✕ Reddedildi
+                        </span>
+                      ) : item.status === "onaylanan" || item.status === "Onaylandı" || item.status === "approved" ? (
+                        <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full border border-emerald-200 inline-flex items-center gap-1">
+                          ✓ Onaylandı
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-xs font-semibold rounded-full border border-amber-200 inline-flex items-center gap-1">
+                          ⏳ Bekliyor
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-4 px-3 text-right space-x-1.5">
+                      {item.status === "reddedildi" || item.status === "Reddedildi" ? (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGelen(item.id)}
+                          className="text-slate-400 hover:text-red-500 text-xs font-semibold px-2 py-1 rounded transition"
+                        >
+                          Kaldır
+                        </button>
+                      ) : item.status === "onaylanan" || item.status === "Onaylandı" || item.status === "approved" ? (
+                        <button
+                          type="button"
+                          onClick={() => setCheckoutModal({ isOpen: true, step: 1, targetItem: item })}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition shadow-sm inline-flex items-center gap-1"
+                        >
+                          Ticari Süreç & Ödeme 🤝
+                        </button>
+                      ) : (
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleBidStatus(item.id, "onaylanan")}
+                            style={{ backgroundColor: "#123873" }}
+                            className="hover:opacity-90 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition shadow-sm"
                           >
-                            {getSpread(item.offerAmount, item.marketMedian)}
-                          </span>
-                        </td>
-
-                        <td className="py-4 px-3">
-                          <span className="font-bold text-slate-800 block text-[11px]">
-                            {item.incoterm}
-                          </span>
-                          <span className="text-[10px] text-slate-400">{item.paymentType}</span>
-                        </td>
-
-                        <td className="py-4 px-3 max-w-xs">
-                          {item.buyerNote ? (
-                            <button
-                              onClick={() => setActiveNoteModal(item.buyerNote)}
-                              className="text-left text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg text-[11px] line-clamp-1 transition font-medium"
-                            >
-                              💬 {item.buyerNote}
-                            </button>
-                          ) : (
-                            <span className="text-slate-300 text-[11px]">- Not Yok -</span>
-                          )}
-                        </td>
-
-                        <td className="py-4 px-3 font-mono font-bold text-slate-600 text-[11px]">
-                          ⏱️ {item.expiresIn}
-                        </td>
-
-                        <td className="py-4 px-3">
-                          {item.status === "bekleyen" && (
-                            <span className="bg-amber-50 text-amber-600 px-2.5 py-1 rounded-md text-[10px] font-bold">
-                              ⏳ Bekliyor
-                            </span>
-                          )}
-                          {item.status === "onaylanan" && (
-                            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold border" style={{ backgroundColor: "rgba(18, 56, 115, 0.08)", color: "#123873", borderColor: "rgba(18, 56, 115, 0.2)" }}>
-                              ✓ Onaylandı
-                            </span>
-                          )}
-                          {item.status === "reddedilen" && (
-                            <span className="bg-red-50 text-red-600 px-2.5 py-1 rounded-md text-[10px] font-bold">
-                              ✕ Reddedildi
-                            </span>
-                          )}
-                        </td>
-
-                        <td className="py-4 px-3 text-right space-x-1.5">
-                          {item.status === "bekleyen" ? (
-                            <>
-                              <button
-                                onClick={() => handleUpdateGelenStatus(item.id, "onaylanan")}
-                                style={{ backgroundColor: "#123873" }}
-                                className="hover:opacity-90 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition shadow-sm"
-                              >
-                                Onayla
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setBidModal({
-                                    isOpen: true,
-                                    mode: "karsi",
-                                    targetId: item.id,
-                                    title: item.listingTitle,
-                                    company: item.offeredBy,
-                                    price: item.offerAmount.toString(),
-                                    amount: "12500",
-                                    paymentType: "pesin",
-                                    incoterm: "exw",
-                                    note: "",
-                                  })
-                                }
-                                className="border border-slate-200 hover:bg-slate-50 text-slate-700 px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
-                              >
-                                Karşı Teklif
-                              </button>
-                            </>
-                          ) : item.status === "onaylanan" ? (
-                            <button
-                              onClick={() => setCheckoutModal({ isOpen: true, step: 1, targetItem: item })}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition shadow-sm"
-                            >
-                              Ticari Süreç & Ödeme 🤝
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleDeleteGelen(item.id)}
-                              className="text-red-500 hover:bg-red-50 px-2.5 py-1 rounded-lg transition text-[11px] font-bold"
-                            >
-                              Sil
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-
-                    {filteredGelen.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="text-center py-8 text-slate-400">
-                          Hiç gelen teklif bulunamadı.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
+                            Onayla
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleBidStatus(item.id, "reddedildi")}
+                            className="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition shadow-sm"
+                          >
+                            Reddet
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
                 </table>
               </div>
             </div>
           )}
 
-          {/* TAB 2: VERDİĞİM TEKLİFLER */}
-          {activeTab === "verilen" && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 w-full">
-              <h3 className="font-bold text-sm text-slate-900 px-2">
-                Diğer Malzeme İlanlarına Verdiğiniz Resmi Teklifler
-              </h3>
+          
+      {/* TAB 2: VERDİĞİM TEKLİFLER */}
+      {activeTab === "verilen" && (
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 w-full">
+          <div>
+            <h3 className="font-bold text-sm text-slate-900 px-2">
+              Diğer Malzeme İlanlarına Verdiğiniz Resmi Teklifler
+            </h3>
+          </div>
 
-              <div className="overflow-x-auto w-full">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-100 text-slate-400 font-bold pb-3 uppercase text-[10px] tracking-wider">
-                      <th className="pb-3 px-3">İlan Adı</th>
-                      <th className="pb-3 px-3">İlan Sahibi Firma</th>
-                      <th className="pb-3 px-3">Verdiğim Teklif</th>
-                      <th className="pb-3 px-3">Teslimat & Toplam</th>
-                      <th className="pb-3 px-3">Notum</th>
-                      <th className="pb-3 px-3">Durum</th>
-                      <th className="pb-3 px-3 text-right">Aksiyonlar</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
-                    {filteredVerilen.map((item) => (
-                      <tr key={item.id} className="hover:bg-slate-50/70 transition">
-                        <td className="py-4 px-3 font-bold text-slate-900">{item.listingTitle}</td>
-                        <td className="py-4 px-3 text-slate-600 font-semibold">🏢 {item.ownerCompany}</td>
-                        <td className="py-4 px-3 font-black text-[#123873] text-sm">
-                          ₺ {item.myOffer.toLocaleString("tr-TR")} / Ton
-                        </td>
-                        <td className="py-4 px-3">
-                          <span className="font-black text-slate-900 block">{item.totalPrice}</span>
-                          <span className="text-[10px] text-slate-400 font-semibold">
-                            {item.incoterm}
-                          </span>
-                        </td>
-                        <td className="py-4 px-3 max-w-xs">
-                          <button
-                            onClick={() => setActiveNoteModal(item.myNote)}
-                            className="text-slate-600 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg text-[11px] block line-clamp-1 transition"
-                          >
-                            💬 {item.myNote}
-                          </button>
-                        </td>
-                        <td className="py-4 px-3">
-                          {item.status === "bekleyen" && (
-                            <span className="bg-amber-50 text-amber-600 px-2.5 py-1 rounded-md text-[10px] font-bold">
-                              ⏳ Yanıt Bekleniyor
-                            </span>
-                          )}
-                          {item.status === "onaylanan" && (
-                            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold border" style={{ backgroundColor: "rgba(18, 56, 115, 0.08)", color: "#123873", borderColor: "rgba(18, 56, 115, 0.2)" }}>
-                              ✓ Kabul Edildi
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-4 px-3 text-right space-x-2">
-                          <button
-                            onClick={() =>
-                              setBidModal({
-                                isOpen: true,
-                                mode: "guncelle",
-                                targetId: item.id,
-                                title: item.listingTitle,
-                                company: item.ownerCompany,
-                                price: item.myOffer.toString(),
-                                amount: item.amount || "10000",
-                                paymentType: "pesin",
-                                incoterm: "exw",
-                                note: item.myNote,
-                              })
-                            }
-                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
-                          >
-                            Güncelle / Pazarlık Yap
-                          </button>
-                          <button
-                            onClick={() => handleDeleteVerilen(item.id)}
-                            className="border border-red-200 text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
-                          >
-                            Geri Çek
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+          <div className="overflow-x-auto w-full">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-slate-100 text-slate-400 font-bold pb-3 uppercase text-[10px] tracking-wider">
+                  <th className="pb-3 px-3">İLAN ADI</th>
+                  <th className="pb-3 px-3">İLAN SAHİBİ FİRMA</th>
+                  <th className="pb-3 px-3">VERDİĞİM TEKLİF</th>
+                  <th className="pb-3 px-3">TESLİMAT & TOPLAM</th>
+                  <th className="pb-3 px-3">NOTUM</th>
+                  <th className="pb-3 px-3">DURUM</th>
+                  <th className="pb-3 px-3 text-right">AKSİYONLAR</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium">
+                {filteredVerilen.map((item: any) => (
+                  <tr key={item.id} className="hover:bg-slate-50/70 transition">
+                    <td className="py-4 px-3 font-bold text-slate-900">{item.listingTitle}</td>
+                    <td className="py-4 px-3 text-slate-600 font-semibold">🏢 {item.ownerCompany}</td>
+                    <td className="py-4 px-3 font-black text-[#123873] text-sm">
+                      ₺ {item.myOffer ? Number(item.myOffer).toLocaleString("tr-TR") : (item.price ? Number(item.price).toLocaleString("tr-TR") : "0")} / Ton
+                    </td>
+                    <td className="py-4 px-3">
+                      <span className="font-black text-slate-900 block">{item.totalPrice}</span>
+                      <span className="text-[10px] text-slate-400 font-semibold">{item.incoterm || "FOB"}</span>
+                    </td>
+                    <td className="py-4 px-3 text-slate-500 text-xs">
+                      💬 {item.buyerNote || item.note || "Standart teklif iletildi."}
+                    </td>
+                    <td className="py-4 px-3">
+                      <span className="px-2.5 py-1 bg-blue-50 text-blue-700 text-xs font-semibold rounded-full border border-blue-200 inline-flex items-center gap-1">
+                        ✓ Kabul Edildi
+                      </span>
+                    </td>
+                    <td className="py-4 px-3 text-right space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBidModal({
+                            isOpen: true,
+                            mode: "guncelle",
+                            targetId: item.id,
+                            title: item.listingTitle || "Malzeme Teklifi",
+                            company: item.ownerCompany || "Firma",
+                            price: String(item.myOffer || item.price || ""),
+                            amount: String(item.amount || item.offerAmount || "1"),
+                            paymentType: "pesin",
+                            incoterm: "exw",
+                            note: item.buyerNote || ""
+                          });
+                        }}
+                        className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
+                      >
+                        Güncelle / Pazarlık Yap
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteVerilen(item.id)}
+                        className="border border-red-200 text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-xl text-[11px] font-bold transition"
+                      >
+                        Geri Çek
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {filteredVerilen.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="text-center py-8 text-slate-400">
+                      Verdiğiniz aktif teklif bulunmuyor.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
-                    {filteredVerilen.length === 0 && (
-                      <tr>
-                        <td colSpan={7} className="text-center py-8 text-slate-400">
-                          Verdiğiniz aktif teklif bulunmuyor.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: ONAYLANAN İŞLEMLERİM */}
+      {/* TAB 3: ONAYLANAN İŞLEMLERİM */}
           {activeTab === "onaylanan" && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 w-full">
               <div className="flex justify-between items-center border-b border-slate-100 pb-3 px-2">
@@ -659,7 +839,7 @@ export default function TekliflerPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {onaylananIslemler.map((item) => (
+                    {tumOnaylananlar.map((item) => (
                       <tr key={item.id} className="hover:bg-slate-50/70 transition">
                         <td className="py-4 px-3">
                           <p className="font-bold text-slate-900">{item.listingTitle}</p>
@@ -1117,27 +1297,18 @@ export default function TekliflerPage() {
                   İlerle →
                 </button>
               ) : checkoutModal.step === 3 ? (
-                <button 
-                  onClick={() => {
-                    const yeniIslem = {
-                      id: Date.now(),
-                      listingTitle: checkoutModal.targetItem?.listingTitle || "Endüstriyel Demir-Çelik Levha",
-                      otherParty: checkoutModal.targetItem?.offeredBy || "Firma 1005 San. Tic. Ltd. Şti.",
-                      totalPrice: checkoutModal.targetItem?.totalPrice || "₺ 125.000",
-                      tonnage: "10.0 Ton",
-                      paymentType: "Kurumsal Havale / EFT",
-                      incoterm: "EXW - Fabrika Teslim",
-                      date: "Az önce",
-                      savedCarbon: "15.0 Ton CO₂e",
-                      treeEquivalent: "680 Ağaç"
-                    };
-                    setOnaylananIslemler([yeniIslem, ...onaylananIslemler]);
-                    setCheckoutModal({ ...checkoutModal, step: 4 });
-                  }}
-                  className="px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 rounded-xl shadow-md hover:bg-emerald-700 transition"
-                >
-                  İşlemi Onayla ✓
-                </button>
+            <button
+              onClick={async () => {
+                const target = checkoutModal.targetItem;
+                if (target?.id) {
+                  await handleBidStatus(target.id, "onaylanan");
+                }
+                setCheckoutModal({ ...checkoutModal, step: 4 });
+              }}
+              className="px-5 py-2.5 text-xs font-bold text-white bg-emerald-600 rounded-xl shadow-md hover:bg-emerald-700 transition"
+            >
+              İşlemi Onayla 🤝
+            </button>
               ) : (
                 <button 
                   onClick={() => {

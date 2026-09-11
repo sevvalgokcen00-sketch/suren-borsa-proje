@@ -5,7 +5,7 @@ const tickerItems = [
   { name: "Temiz Demir-Çelik Kırpıntısı (DKP)", price: "11,80 TL/kg", change: "+0,85%", isUp: true },
   { name: "ST37/ST44 Profil ve Levha Artığı", price: "13,60 TL/kg", change: "+1,20%", isUp: true },
   { name: "Demir-Çelik Talaşı (Temiz/Paslı)", price: "8,90 TL/kg", change: "-0,45%", isUp: false },
-  { name: "Karışık / Kontamine Hurda", price: "8,30 TL/kg", change: "-0,80%", isUp: false },
+  { name: "Karışık / Kontamine İkincil Hammadde", price: "8,30 TL/kg", change: "-0,80%", isUp: false },
   { name: "S235JR Levha Sac Kesim Artığı", price: "24,50 TL/kg", change: "+1,85%", isUp: true },
   { name: "304 Kalite Paslanmaz Kırpıntı", price: "42,80 TL/kg", change: "+1,90%", isUp: true },
   { name: "LME Küresel Çelik Endeksi", price: "$545,00 / Ton", change: "+0,50%", isUp: true },

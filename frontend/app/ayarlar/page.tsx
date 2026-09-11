@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 
 export default function Ayarlar() {
@@ -31,9 +31,38 @@ export default function Ayarlar() {
   const [notifications, setNotifications] = useState({
     emailOffers: true,
     emailMarket: true,
-    smsAlerts: false,
-    weeklyReport: true,
+    smsAlerts: false
   });
+
+  
+  useEffect(() => {
+    fetch("http://localhost:5000/api/profile/1")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && !data.error) {
+          setNotifications({
+            emailOffers: data.email_offers === 1 || data.email_offers === true,
+            emailMarket: data.email_market === 1 || data.email_market === true,
+            smsAlerts: data.sms_alerts === 1 || data.sms_alerts === true
+          });
+          setCompanyData((prev) => ({
+            ...prev,
+            companyName: data.company_name || prev.companyName,
+            email: data.email || prev.email,
+            phone: data.phone || prev.phone,
+            taxNumber: data.tax_number || prev.taxNumber,
+            taxOffice: data.tax_office || prev.taxOffice,
+            address: data.address || prev.address
+          }));
+          setProfileData((prev) => ({
+            ...prev,
+            fullName: data.name || prev.fullName,
+            userEmail: data.email || prev.userEmail
+          }));
+        }
+      })
+      .catch((err) => console.error("Profil yüklenirken hata:", err));
+  }, []);
 
   const handleCompanyChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setCompanyData({ ...companyData, [e.target.name]: e.target.value });
@@ -46,6 +75,188 @@ export default function Ayarlar() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     alert("Ayarlarınız başarıyla güncellendi!");
+  };
+
+  
+  
+  
+  const handleDownloadInvoice = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) {
+      alert("Lütfen tarayıcınızdan açılır pencere (pop-up) izni verin.");
+      return;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="tr">
+      <head>
+        <meta charset="utf-8" />
+        <title>DöngüBorsa E-Arşiv Fatura</title>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #1e293b; }
+          .header { border-bottom: 2px solid #0f172a; padding-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end; }
+          .logo { font-size: 24px; font-weight: 800; color: #1E314A; letter-spacing: -0.5px; }
+          .invoice-tag { font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; }
+          .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 30px 0; }
+          .info-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+          .info-card h4 { margin: 0 0 8px; font-size: 12px; color: #64748b; text-transform: uppercase; }
+          .info-card p { margin: 4px 0; font-size: 13px; font-weight: 600; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+          th, td { border: 1px solid #cbd5e1; padding: 12px 14px; text-align: left; font-size: 13px; }
+          th { background-color: #f1f5f9; font-weight: 700; color: #334155; }
+          .total-box { margin-top: 24px; display: flex; justify-content: flex-end; }
+          .total-card { width: 260px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; }
+          .total-row { display: flex; justify-content: space-between; margin: 6px 0; font-size: 13px; }
+          .grand-total { border-top: 2px solid #0f172a; padding-top: 8px; font-weight: 800; font-size: 16px; color: #0f172a; }
+          .status { display: inline-block; padding: 4px 10px; background: #dcfce7; color: #15803d; border-radius: 999px; font-weight: 700; font-size: 11px; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="logo">♻️ DöngüBorsa</div>
+          <div class="invoice-tag">E-ARŞİV FATURA</div>
+        </div>
+        
+        <div class="info-grid">
+          <div class="info-card">
+            <h4>Alıcı Firma</h4>
+            <p>${companyData.companyName || "Döngü Metal San. ve Tic. A.Ş."}</p>
+            <p>VKN: ${companyData.taxNumber || "1234567890"}</p>
+            <p>VD: ${companyData.taxOffice || "Gebze Vergi Dairesi"}</p>
+            <p>${companyData.address || "Organize Sanayi Bölgesi, Gebze / Kocaeli"}</p>
+          </div>
+          <div class="info-card">
+            <h4>Fatura Bilgileri</h4>
+            <p>Fatura Tarihi: 01 Mayıs 2026</p>
+            <p>Ödeme Durumu: <span class="status">ÖDENDİ</span></p>
+            <p>Senaryo: E-Arşiv Ticari</p>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Hizmet / Açıklama</th>
+              <th>Dönem</th>
+              <th>Birim Fiyat</th>
+              <th>KDV (%20)</th>
+              <th>Toplam</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>B2B Kurumsal Kurucu Paket Aboneliği</td>
+              <td>1 Ay</td>
+              <td>₺ 2.450,00</td>
+              <td>₺ 490,00</td>
+              <td>₺ 2.940,00</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="total-box">
+          <div class="total-card">
+            <div class="total-row"><span>Ara Toplam:</span><span>₺ 2.450,00</span></div>
+            <div class="total-row"><span>KDV Tutarı:</span><span>₺ 490,00</span></div>
+            <div class="total-row grand-total"><span>Genel Toplam:</span><span>₺ 2.940,00</span></div>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
+  const handleSaveProfileSecurity = async () => {
+    if (profileData.newPassword && profileData.newPassword.length < 6) {
+      alert("Yeni şifre en az 6 karakter olmalıdır!");
+      return;
+    }
+    if (profileData.newPassword && profileData.newPassword !== profileData.confirmPassword) {
+      alert("Yeni şifreler birbiriyle eşleşmiyor!");
+      return;
+    }
+
+    try {
+      const res = await fetch("http://localhost:5000/api/profile/1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: profileData.fullName,
+          currentPassword: profileData.currentPassword,
+          newPassword: profileData.newPassword || undefined
+        })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        alert("✅ Profil ve güvenlik bilgileri başarıyla güncellendi!");
+        setProfileData((prev) => ({ ...prev, currentPassword: "", newPassword: "", confirmPassword: "" }));
+      } else {
+        alert("Hata: " + (result.error || "Güncellenemedi"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Sunucuya bağlanılamadı.");
+    }
+  };
+
+  
+  const handleSaveNotifications = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/profile/1/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          emailOffers: notifications.emailOffers,
+          emailMarket: notifications.emailMarket,
+          smsAlerts: notifications.smsAlerts
+        })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        alert("✅ Bildirim tercihleri başarıyla kaydedildi!");
+      } else {
+        alert("Hata: " + (result.error || "Kaydedilemedi"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Sunucuya bağlanılamadı.");
+    }
+  };
+
+  const handleSaveCompany = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/profile/1", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_name: companyData.companyName,
+          phone: companyData.phone,
+          tax_number: companyData.taxNumber
+        })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        alert("✅ Firma bilgileri başarıyla veritabanına kaydedildi!");
+      } else {
+        alert("Hata: " + (result.error || "Kaydedilemedi"));
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Sunucuya bağlanılamadı.");
+    }
   };
 
   return (
@@ -238,9 +449,7 @@ export default function Ayarlar() {
               </div>
 
               <div className="pt-2 flex justify-end">
-                <button type="submit" className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-sm transition">
-                  Firma Bilgilerini Kaydet
-                </button>
+                <button onClick={handleSaveCompany} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-2.5 rounded-lg shadow transition-all cursor-pointer">Firma Bilgilerini Kaydet</button>
               </div>
             </form>
           )}
@@ -315,9 +524,7 @@ export default function Ayarlar() {
               </div>
 
               <div className="pt-2 flex justify-end">
-                <button type="submit" className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-sm transition">
-                  Şifre ve Profili Güncelle
-                </button>
+                <button onClick={handleSaveProfileSecurity} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-2.5 rounded-lg shadow transition-all cursor-pointer">Şifre ve Profili Güncelle</button>
               </div>
             </form>
           )}
@@ -335,7 +542,7 @@ export default function Ayarlar() {
                   </div>
                   <input
                     type="checkbox"
-                    checked={notifications.emailOffers}
+                    checked={!!notifications.emailOffers} onChange={(e) => setNotifications({ ...notifications, emailOffers: e.target.checked })}
                     onChange={(e) => setNotifications({ ...notifications, emailOffers: e.target.checked })}
                     className="w-4 h-4 accent-[#1E314A] cursor-pointer"
                   />
@@ -344,11 +551,11 @@ export default function Ayarlar() {
                 <label className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50 cursor-pointer">
                   <div>
                     <p className="font-bold text-slate-900">Piyasa & Fiyat Trend Haberleri</p>
-                    <p className="text-slate-400 text-[11px]">Haftalık hurda metal ve polimer piyasa fiyat uyarıları.</p>
+                    <p className="text-slate-400 text-[11px]">Haftalık ikincil hammadde ve polimer piyasa fiyat uyarıları.</p>
                   </div>
                   <input
                     type="checkbox"
-                    checked={notifications.emailMarket}
+                    checked={!!notifications.emailMarket} onChange={(e) => setNotifications({ ...notifications, emailMarket: e.target.checked })}
                     onChange={(e) => setNotifications({ ...notifications, emailMarket: e.target.checked })}
                     className="w-4 h-4 accent-[#1E314A] cursor-pointer"
                   />
@@ -361,7 +568,7 @@ export default function Ayarlar() {
                   </div>
                   <input
                     type="checkbox"
-                    checked={notifications.smsAlerts}
+                    checked={!!notifications.smsAlerts} onChange={(e) => setNotifications({ ...notifications, smsAlerts: e.target.checked })}
                     onChange={(e) => setNotifications({ ...notifications, smsAlerts: e.target.checked })}
                     className="w-4 h-4 accent-[#1E314A] cursor-pointer"
                   />
@@ -369,9 +576,7 @@ export default function Ayarlar() {
               </div>
 
               <div className="pt-2 flex justify-end">
-                <button onClick={handleSave} className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-6 py-2.5 rounded-xl text-xs shadow-sm transition">
-                  Tercihleri Kaydet
-                </button>
+                <button type="button" onClick={handleSaveNotifications} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-2.5 rounded-lg shadow transition-all cursor-pointer">Tercihleri Kaydet</button>
               </div>
             </div>
           )}
@@ -405,7 +610,7 @@ export default function Ayarlar() {
                     <span>01 Mayıs 2026</span>
                     <span className="font-bold text-slate-800">₺ 2.450 + KDV</span>
                     <span className="text-[#1E314A] font-bold">Ödendi ✓</span>
-                    <button className="text-blue-600 font-bold hover:underline">PDF</button>
+                    <button type="button" onClick={handleDownloadInvoice} className="text-blue-600 font-bold hover:underline cursor-pointer">PDF</button>
                   </div>
                 </div>
               </div>

@@ -61,7 +61,7 @@ router.get('/', async (req, res) => {
     if (minWeight) { query += ' AND weight >= ?'; params.push(minWeight); }
     if (maxWeight) { query += ' AND weight <= ?'; params.push(maxWeight); }
 
-    query += ' ORDER BY createdAt DESC';
+    query += ' ORDER BY id DESC';
 
     const listings = await db.all(query, params);
 
@@ -136,153 +136,95 @@ router.get('/:id', async (req, res) => {
 // --------------------------------------------------------------------------
 // 4. YENİ İLAN OLUŞTURMA (POST /api/listings) - Validasyon Eklendi
 // --------------------------------------------------------------------------
-router.post('/', upload.array('images', 5), async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const db = await getDb();
-    const { 
-      title, description, weight, unit, price, 
-      usageStatus, locationCity, locationDistrict, categoryId, hasCertificate 
-    } = req.body;
-
-    const numPrice = parseFloat(price);
-    const numWeight = parseFloat(weight);
-
-    // Zorunlu alan kontrolü
-    if (!title || isNaN(numPrice) || isNaN(numWeight)) {
-      return res.status(400).json({ message: "Başlık, fiyat ve miktar alanları zorunludur!" });
-    }
-
-    // Negatif veya Sıfır Fiyat/Ağırlık Engeli
-    if (numPrice <= 0 || numWeight <= 0) {
-      return res.status(400).json({ message: "Fiyat ve miktar (ağırlık) 0'dan büyük olmalıdır!" });
-    }
-
-    let imageUrls = [];
-    if (req.files && req.files.length > 0) {
-      imageUrls = req.files.map(file => `http://localhost:5000/uploads/${file.filename}`);
-    }
+    const b = req.body || {};
+    
+    const titleVal = b.title || b.material_type || b.materialType || 'Demir-Çelik Malzeme';
+    const matTypeVal = b.material_type || b.materialType || b.title || 'Demir-Çelik Malzeme';
+    const weightVal = parseFloat(b.weight) || 0;
+    const priceVal = parseFloat(b.price) || 0;
+    const cityVal = b.locationCity || b.city || 'Kocaeli';
+    const catVal = b.category || 'Metal';
 
     const result = await db.run(
       `INSERT INTO listings 
-      (categoryId, title, description, weight, unit, price, usageStatus, locationCity, locationDistrict, hasCertificate, imageUrls, is_archived) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+      (user_id, title, material_type, weight, price, city, image_url, status, is_archived, materialType, category) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
       [
-        categoryId || 1, title, description || '', numWeight, unit || 'kg', 
-        numPrice, usageStatus, locationCity, locationDistrict, 
-        hasCertificate === 'true' || hasCertificate === true ? 1 : 0, 
-        JSON.stringify(imageUrls)
+        1,
+        titleVal,
+        matTypeVal,
+        weightVal,
+        priceVal,
+        cityVal,
+        null,
+        'Aktif',
+        matTypeVal,
+        catVal
       ]
     );
 
     res.status(201).json({
       message: "İlan başarıyla oluşturuldu!",
-      listingId: result.lastID,
-      imageUrls: imageUrls
+      id: result.lastID
     });
-  } catch (error) {
-    res.status(500).json({ message: "İlan eklenirken hata oluştu!", error: error.message });
+  } catch (err) {
+    console.error("İlan ekleme hatası:", err);
+    res.status(500).json({ message: "İlan eklenirken hata oluştu!", error: err.message });
   }
 });
 
 // --------------------------------------------------------------------------
-// 5. İLAN GÜNCELLEME (PUT /api/listings/:id) - Eski Görsel Temizliği & Validasyon
-// --------------------------------------------------------------------------
-router.put('/:id', upload.array('images', 5), async (req, res) => {
+// 5. İLAN GÜNCELLEME (Kalıcı SQLite Güncellemesi)
+router.put('/:id', async (req, res) => {
   try {
+    const { getDb } = require('../db');
     const db = await getDb();
-    const { id } = req.params;
-    const { 
-      title, description, weight, unit, price, 
-      usageStatus, locationCity, locationDistrict, categoryId, hasCertificate 
-    } = req.body;
+    const rawId = req.params.id;
+    const numericId = parseInt(String(rawId).replace(/\D/g, ''), 10) || rawId;
+    const { price, amount, weight } = req.body || {};
+    const finalWeight = weight !== undefined ? weight : amount;
 
-    const existingListing = await db.get('SELECT * FROM listings WHERE id = ?', [id]);
-    if (!existingListing) {
-      return res.status(404).json({ message: "Güncellenecek ilan bulunamadı!" });
-    }
-
-    // Fiyat / Ağırlık Güncelleniyorsa Negatiflik Kontrolü
-    if (price !== undefined && parseFloat(price) <= 0) {
-      return res.status(400).json({ message: "Fiyat 0'dan büyük olmalıdır!" });
-    }
-    if (weight !== undefined && parseFloat(weight) <= 0) {
-      return res.status(400).json({ message: "Miktar 0'dan büyük olmalıdır!" });
-    }
-
-    let imageUrls = existingListing.imageUrls ? JSON.parse(existingListing.imageUrls) : [];
-
-    // Yeni resim yüklendiyse eski resimleri diskten temizle
-    if (req.files && req.files.length > 0) {
-      imageUrls.forEach(url => {
-        const filename = url.split('/uploads/')[1];
-        if (filename) {
-          const filePath = path.join(__dirname, '..', 'uploads', filename);
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        }
-      });
-      imageUrls = req.files.map(file => `http://localhost:5000/uploads/${file.filename}`);
+    // Hem rawId hem numericId ile ara
+    let existing = await db.get('SELECT * FROM listings WHERE id = ? OR id = ?', [rawId, numericId]);
+    
+    if (!existing) {
+      return res.status(404).json({ message: 'Güncellenecek ilan bulunamadı!' });
     }
 
     await db.run(
-      `UPDATE listings SET 
-        title = COALESCE(?, title),
-        description = COALESCE(?, description),
-        weight = COALESCE(?, weight),
-        unit = COALESCE(?, unit),
-        price = COALESCE(?, price),
-        usageStatus = COALESCE(?, usageStatus),
-        locationCity = COALESCE(?, locationCity),
-        locationDistrict = COALESCE(?, locationDistrict),
-        categoryId = COALESCE(?, categoryId),
-        hasCertificate = COALESCE(?, hasCertificate),
-        imageUrls = ?
-      WHERE id = ?`,
-      [
-        title !== undefined ? title : null, 
-        description !== undefined ? description : null, 
-        weight !== undefined ? parseFloat(weight) : null, 
-        unit !== undefined ? unit : null, 
-        price !== undefined ? parseFloat(price) : null, 
-        usageStatus !== undefined ? usageStatus : null, 
-        locationCity !== undefined ? locationCity : null, 
-        locationDistrict !== undefined ? locationDistrict : null, 
-        categoryId !== undefined ? categoryId : null, 
-        hasCertificate !== undefined ? (hasCertificate === 'true' || hasCertificate === true ? 1 : 0) : null,
-        JSON.stringify(imageUrls),
-        id
-      ]
+      'UPDATE listings SET price = COALESCE(?, price), weight = COALESCE(?, weight) WHERE id = ?',
+      [price, finalWeight, existing.id]
     );
 
-    res.json({ message: "İlan başarıyla güncellendi!" });
+    res.json({ success: true, message: 'İlan başarıyla güncellendi' });
   } catch (error) {
-    res.status(500).json({ message: "İlan güncellenirken hata oluştu!", error: error.message });
+    console.error("PUT /api/listings/:id hatası:", error);
+    res.status(500).json({ message: 'İlan güncellenirken hata oluştu!', error: error.message });
   }
 });
 
-// --------------------------------------------------------------------------
-// 6. İLAN KALDIRMA (DELETE /api/listings/:id) - Soft Delete (Arşivleme)
-// --------------------------------------------------------------------------
+// 6. İLAN SİLME (Kalıcı SQLite Silme)
 router.delete('/:id', async (req, res) => {
   try {
+    const { getDb } = require('../db');
     const db = await getDb();
-    const { id } = req.params;
+    const rawId = req.params.id;
+    const numericId = parseInt(String(rawId).replace(/\D/g, ''), 10) || rawId;
 
-    const listing = await db.get('SELECT id FROM listings WHERE id = ?', [id]);
-    if (!listing) {
-      return res.status(404).json({ message: "Kaldırılacak ilan bulunamadı!" });
+    let existing = await db.get('SELECT id FROM listings WHERE id = ? OR id = ?', [rawId, numericId]);
+    
+    if (!existing) {
+      return res.status(404).json({ message: 'Kaldırılacak ilan bulunamadı!' });
     }
 
-    // Veritabanından silmek yerine pasife alıp arşivliyoruz
-    await db.run(
-      'UPDATE listings SET is_archived = 1, usageStatus = "Pasif" WHERE id = ?',
-      [id]
-    );
-
-    res.json({ message: "İlan başarıyla kaldırıldı (arşivlendi)." });
+    await db.run('DELETE FROM listings WHERE id = ?', [existing.id]);
+    res.json({ success: true, message: 'İlan veritabanından kalıcı olarak kaldırıldı.' });
   } catch (error) {
-    res.status(500).json({ message: "İlan kaldırılırken hata oluştu!", error: error.message });
+    console.error("DELETE /api/listings/:id hatası:", error);
+    res.status(500).json({ message: 'İlan kaldırılırken hata oluştu!', error: error.message });
   }
 });
 

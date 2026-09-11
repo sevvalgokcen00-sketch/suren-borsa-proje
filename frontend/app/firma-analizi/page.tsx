@@ -253,7 +253,7 @@ export default function FirmaAnalizi() {
                         <td className="p-3 text-slate-400">Son 30 Gün içinde</td>
                       </tr>
                       <tr>
-                        <td className="p-3 text-slate-800 font-bold">Ekstra Hurda Sevkiyatı</td>
+                        <td className="p-3 text-slate-800 font-bold">Ekstra İkincil Hammadde Sevkiyatı</td>
                         <td className="p-3 font-bold" style={{ color: "#1E314A" }}>♻️ Geri Dönüşüm</td>
                         <td className="p-3 text-slate-400">Son 3 Ay içinde</td>
                       </tr>

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import baseData from "../data/islemler.json";
 
@@ -36,28 +36,100 @@ export default function IlanlarPaneli() {
   const [activeTab, setActiveTab] = useState<"aktif" | "benim">("aktif");
   const [filter, setFilter] = useState("Hepsi");
   
-  const [aktifListings, setAktifListings] = useState(materialsData.slice(0, 15));
-  const [benimListings, setBenimListings] = useState(materialsData.slice(15, 20));
+  
+  const [aktifListings, setAktifListings] = useState<any[]>([]);
+  const [benimListings, setBenimListings] = useState<any[]>([]);
+
+        const loadListings = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/listings");
+      if (res.ok) {
+        const raw = await res.json();
+        const rawList = Array.isArray(raw) ? raw : (raw.value || raw.listings || []);
+        
+        if (rawList.length > 0) {
+          const formatted = rawList.map((item: any) => ({
+            id: item.id ? String(item.id) : "1",
+            title: item.title || item.material_type || "Demir - Çelik Kırpıntı",
+            amount: item.weight || item.amount || 0,
+            price: item.price || 0,
+            hasCertificate: item.hasCertificate === 1 || item.hasCertificate === true || true,
+            location: item.city || item.locationCity || "Kocaeli",
+            status: item.status || "Aktif",
+            material_type: item.material_type || ""
+          }));
+
+          // En büyük id (en yeni eklenen) en üstte olacak şekilde sırala
+          formatted.sort((a: any, b: any) => Number(a.id) - Number(b.id));
+
+          setAktifListings(formatted);
+          setBenimListings(formatted);
+        } else {
+          setAktifListings(materialsData.slice(0, 15));
+          setBenimListings(materialsData.slice(15, 20));
+        }
+      }
+    } catch (err) {
+      console.error("İlanlar çekilemedi:", err);
+      setAktifListings(materialsData.slice(0, 15));
+      setBenimListings(materialsData.slice(15, 20));
+    }
+  };
+
+  useEffect(() => {
+    loadListings();
+  }, []);
+
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState("");
   const [editAmount, setEditAmount] = useState("");
 
-  const handleSaveEdit = (id: string) => {
-    setBenimListings(
-      benimListings.map((item) =>
-        item.id === id
-          ? { ...item, price: editPrice || item.price, amount: editAmount || item.amount }
-          : item
-      )
-    );
-    setEditingId(null);
-    alert("✅ İlan başarıyla güncellendi!");
+  const handleSaveEdit = async (id: string) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/listings/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          price: editPrice ? parseFloat(editPrice) : undefined,
+          amount: editAmount ? parseFloat(editAmount) : undefined
+        })
+      });
+      if (res.ok) {
+        setBenimListings((prev: any[]) =>
+          prev.map((item: any) =>
+            String(item.id) === String(id)
+              ? { ...item, price: editPrice || item.price, amount: editAmount || item.amount }
+              : item
+          )
+        );
+        setEditingId(null);
+        alert("✅ İlan başarıyla güncellendi!");
+      } else {
+        alert("İlan güncellenirken hata oluştu.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Sunucuya bağlanılamadı.");
+    }
   };
 
-  const handleDeleteListing = (id: string) => {
-    if (confirm("Bu ilanı kaldırmak istediğinize emin misiniz?")) {
-      setBenimListings(benimListings.filter((item) => item.id !== id));
+  const handleDeleteListing = async (id: string) => {
+    if (!confirm("Bu ilanı kalıcı olarak kaldırmak istediğinize emin misiniz?")) return;
+    try {
+      const res = await fetch(`http://localhost:5000/api/listings/${id}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        setBenimListings((prev: any[]) => prev.filter((item: any) => String(item.id) !== String(id)));
+        setAktifListings((prev: any[]) => prev.filter((item: any) => String(item.id) !== String(id)));
+        alert("✅ İlan veritabanından kalıcı olarak silindi.");
+      } else {
+        alert("İlan silinirken hata oluştu.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Sunucuya bağlanılamadı.");
     }
   };
 
@@ -193,14 +265,14 @@ export default function IlanlarPaneli() {
                           {activeTab === "aktif" ? (
                             <>
                               <Link
-                                href={`/malzemeler/detay?id=${item.id.replace("T-", "")}`}
+                                href={`/malzemeler/detay?id=${item.id}`}
                                 className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1.5 rounded-lg transition text-[11px] inline-block"
                               >
                                 Görüntüle
                               </Link>
 
                               <Link
-                                href={`/teklifler?ilan=${item.id}&baslik=${encodeURIComponent(item.title)}&fiyat=${String(item.price).replace(/[^0-9]/g, "") || "24500"}`}
+                                href={`/teklifler?ilan=${item.id}&baslik=${encodeURIComponent(item.title)}&fiyat=${item.price}`}
                                 style={{ backgroundColor: "#123873" }}
                                 className="hover:opacity-90 text-white font-bold px-2.5 py-1.5 rounded-lg transition text-[11px] inline-block shadow-sm"
                               >

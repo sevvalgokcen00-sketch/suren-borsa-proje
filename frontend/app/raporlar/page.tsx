@@ -178,7 +178,7 @@ export default function RaporlarPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 pt-1 text-xs">
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80">
-                <div className="font-bold text-slate-800">🏗️ Demir-Çelik (Hurda/Fire)</div>
+                <div className="font-bold text-slate-800">🏗️ Demir-Çelik (İkincil Hammadde/Fire)</div>
                 <div className="text-lg font-black text-slate-900 mt-1">11.450 Ton (%62)</div>
                 <div className="text-[11px] text-[#1E314A] font-bold mt-0.5">~1.950 Ton CO₂e Tasarrufu</div>
               </div>
@@ -232,7 +232,7 @@ export default function RaporlarPage() {
                       <span className="bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">Sabit</span>
                     </div>
                     <p className="font-mono text-xs font-bold text-[#1E314A] pt-1">İşlem Hacmi (Ton) × 1.5</p>
-                    <p className="text-[9px] text-slate-500">Kabul gören standart: 1 Ton hurda çelik, ortalama 1.5 ton sera gazı salınımını önler.</p>
+                    <p className="text-[9px] text-slate-500">Kabul gören standart: 1 Ton ikincil hammadde çelik, ortalama 1.5 ton sera gazı salınımını önler.</p>
                   </div>
                 </div>
               </div>
@@ -258,7 +258,7 @@ export default function RaporlarPage() {
                       <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">Sabit</span>
                     </div>
                     <p className="font-mono text-xs font-bold text-[#1E314A] pt-1">İşlem Hacmi (Ton) × 4.5</p>
-                    <p className="text-[9px] text-slate-500">Kabul gören standart: 1 Ton hurda kullanımı madencilik ve izabeye göre 4.5 MWh tasarruf sağlar.</p>
+                    <p className="text-[9px] text-slate-500">Kabul gören standart: 1 Ton ikincil hammadde kullanımı madencilik ve izabeye göre 4.5 MWh tasarruf sağlar.</p>
                   </div>
                 </div>
               </div>

@@ -80,7 +80,7 @@ export default function GostergePaneli() {
         <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between gap-4">
           <div>
             <h1 className="font-bold text-slate-900 text-sm">Demir-Çelik Borsa Performans ve Analiz Paneli</h1>
-            <p className="text-[11px] text-slate-400">Demir-çelik hurda ve üretim fazlası stoklarının yıllık verimlilik göstergeleri</p>
+            <p className="text-[11px] text-slate-400">Demir-çelik ikincil hammadde ve üretim fazlası stoklarının yıllık verimlilik göstergeleri</p>
           </div>
 
           <div className="flex items-center gap-4 text-xs">
@@ -262,7 +262,7 @@ export default function GostergePaneli() {
                     <span className="font-black text-sm" style={{ color: "#1E314A" }}>Pozitif Seyir</span>
                   </div>
                   <p className="text-[11px] text-slate-600 leading-relaxed font-medium">
-                    Demir-çelik piyasasında son 24 saatte ortalama fiyatlar <span className="font-bold" style={{ color: "#1E314A" }}>%3,8 yükseldi</span>. DKP hurda ve profil ürünlerinde sanayi kaynaklı güçlü bir talep artışı gözlemleniyor.
+                    Demir-çelik piyasasında son 24 saatte ortalama fiyatlar <span className="font-bold" style={{ color: "#1E314A" }}>%3,8 yükseldi</span>. DKP ikincil hammadde ve profil ürünlerinde sanayi kaynaklı güçlü bir talep artışı gözlemleniyor.
                   </p>
                   <div className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100 mt-2 text-[10px] font-bold">
                     <div className="flex flex-col items-center"><span className="text-slate-400">Talep</span><span className="text-xs" style={{ color: "#1E314A" }}>↑ %12</span></div>

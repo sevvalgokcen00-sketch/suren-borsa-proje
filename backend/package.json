@@ -17,9 +17,10 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^1.4.5-lts.1",
     "sqlite": "^5.1.1",
-    "sqlite3": "^6.0.1"
+    "sqlite3": "^6.0.1",
+    "xlsx": "^0.18.5"
   },
-"overrides": {
+  "overrides": {
     "tar": "^7.4.3",
     "qs": "^6.16.0"
   },

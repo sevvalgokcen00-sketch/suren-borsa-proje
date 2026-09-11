@@ -61,7 +61,7 @@ export default function NasilCalisirPage() {
             <span style={{ color: "#729CD4" }}>Nasıl Değere Dönüştürüyoruz?</span>
           </h1>
           <p className="text-slate-200 text-sm max-w-xl mx-auto leading-relaxed drop-shadow">
-            DöngüBorsa; fabrikaların işlenmemiş ham üretim artığı metal ve hurdalarını şeffaf medyan fiyatlar, teklif yönetimi ve Kapsam 3 emisyon takibiyle güvenle ticarete açar.
+            DöngüBorsa; fabrikaların işlenmemiş ham üretim artığı metal ve ikincil hammaddelarını şeffaf medyan fiyatlar, teklif yönetimi ve Kapsam 3 emisyon takibiyle güvenle ticarete açar.
           </p>
         </div>
 

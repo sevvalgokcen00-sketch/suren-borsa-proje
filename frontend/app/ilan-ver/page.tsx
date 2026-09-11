@@ -31,6 +31,7 @@ const PROVINCES_MAP: { [key: string]: string[] } = (() => {
 })();
 
 export default function IlanVer() {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [materialType, setMaterialType] = useState("Temiz Demir-Çelik Kırpıntısı");
   const [usageStatus, setUsageStatus] = useState("0 / Üretim Fazlası (Orijinal Stok)");
   const [purity, setPurity] = useState("98");
@@ -73,7 +74,7 @@ export default function IlanVer() {
       baseRef = 8.90;
       completedTxCount = 76;
     }
-    if (materialType === "Karışık / Kontamine Hurda") {
+    if (materialType === "Karışık / Kontamine İkincil Hammadde") {
       baseRef = 8.30;
       completedTxCount = 3;
     }
@@ -82,7 +83,7 @@ export default function IlanVer() {
     
     if (usageStatus.includes("0 / Üretim Fazlası")) qualityBonus += 0.50;
     if (usageStatus.includes("2. El / Çıkma")) qualityBonus -= 0.40;
-    if (usageStatus.includes("Hurda / Geri Dönüşüm")) qualityBonus -= 0.70;
+    if (usageStatus.includes("İkincil Hammadde / Geri Dönüşüm")) qualityBonus -= 0.70;
 
     if (contamination.includes("Temiz")) qualityBonus += 0.30;
     if (rustLevel.includes("Pas Yok")) qualityBonus += 0.20;
@@ -107,6 +108,57 @@ export default function IlanVer() {
       txCount: completedTxCount,
     };
   }, [materialType, usageStatus, contamination, rustLevel, packaging, userPrice]);
+
+  
+    const handleCreateListing = async (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    try {
+      setIsSubmitting(true);
+      const desc = [
+        "Saflık: %" + (purity || "98"),
+        "Kontaminasyon: " + (contamination || "Temiz"),
+        "Pas: " + (rustLevel || "Yok"),
+        "Nem: " + (moisture || "Kuru"),
+        "Form: " + (physicalForm || "Kırpıntı"),
+        "Paket: " + (packaging || "Balya")
+      ].join(" | ");
+
+      const payload = {
+        categoryId: 1,
+        title: materialType || "Temiz Demir-Çelik Kırpıntısı",
+        description: desc,
+        weight: Number(amount) || 1000,
+        unit: "Kg",
+        price: Number(userPrice) || 13.40,
+        usageStatus: usageStatus || "0 / Üretim Fazlası (Orijinal Stok)",
+        locationCity: selectedProvince || "Kocaeli",
+        locationDistrict: selectedDistrict || "Başiskele",
+        hasCertificate: 1
+      };
+
+      const res = await fetch("http://localhost:5000/api/listings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const resData = await res.json().catch(() => ({}));
+
+      if (res.ok) {
+        alert("İlanınız başarıyla yayınlandı!");
+        window.location.href = "/ilanlar-paneli";
+      } else {
+        alert("İlan eklenemedi: " + (resData.message || resData.error || "Sunucu hatası"));
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert("Hata oluştu: " + err.message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#f8fafc] font-sans flex text-slate-800">
@@ -147,7 +199,7 @@ export default function IlanVer() {
                     <option value="Temiz Demir-Çelik Kırpıntısı">Temiz Demir-Çelik Kırpıntısı</option>
                     <option value="Profil ve Levha Artığı">Profil ve Levha Artığı</option>
                     <option value="Demir-Çelik Talaşı">Demir-Çelik Talaşı</option>
-                    <option value="Karışık / Kontamine Hurda">Karışık / Kontamine Hurda</option>
+                    <option value="Karışık / Kontamine İkincil Hammadde">Karışık / Kontamine İkincil Hammadde</option>
                   </select>
                 </div>
 
@@ -161,7 +213,7 @@ export default function IlanVer() {
                     <option value="0 / Üretim Fazlası (Orijinal Stok)">0 / Üretim Fazlası (Orijinal Stok)</option>
                     <option value="Az Kullanılmış / İkincil İşleme Uygun">Az Kullanılmış / İkincil İşleme Uygun</option>
                     <option value="2. El / Çıkma / Söküm">2. El / Çıkma / Söküm</option>
-                    <option value="Hurda / Geri Dönüşüm Atığı">Hurda / Geri Dönüşüm Atığı</option>
+                    <option value="İkincil Hammadde / Geri Dönüşüm Atığı">İkincil Hammadde / Geri Dönüşüm Atığı</option>
                   </select>
                 </div>
               </div>
@@ -411,10 +463,7 @@ export default function IlanVer() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    alert(`${selectedProvince}, ${selectedDistrict} konumlu ilanınız referans fiyatlarla yayına alındı!`);
-                    window.location.href = "/ilanlar-paneli";
-                  }}
+                  onClick={handleCreateListing}
                   style={{ backgroundColor: "#123873" }}
                   className="hover:opacity-90 text-white font-bold py-3.5 rounded-xl text-xs transition shadow-lg block text-center w-full"
                 >

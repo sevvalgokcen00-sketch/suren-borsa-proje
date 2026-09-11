@@ -5,6 +5,7 @@ const fs = require('fs');
 const { getDb } = require('./db');
 
 const app = express();
+
 const PORT = process.env.PORT || 5000;
 
 // Middleware
