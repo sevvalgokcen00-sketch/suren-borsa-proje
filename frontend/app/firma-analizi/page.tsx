@@ -6,14 +6,13 @@ import Sidebar from "../../components/Sidebar";
 import { apiFetch } from "@/lib/api";
 import { CompanyAnalysisData } from "@/lib/types";
 
-// Türkçe karakter bozulmalarını (  ) otomatik düzeltmek için yardımcı fonksiyon
+// Türkçe karakter bozulmalarını düzeltmek için güvenli yardımcı fonksiyon
 const fixText = (text: string | undefined | null) => {
   if (!text) return "";
   return text
     .replace(/Sren/g, "Süren")
     .replace(/elik/g, "Çelik")
-    .replace(/A\./g, "A.Ş.")
-    .replace(//g, "ç"); // Genel bozulmalar için
+    .replace(/A\./g, "A.Ş.");
 };
 
 export default function FirmaAnalizi() {
