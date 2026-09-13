@@ -120,10 +120,15 @@ export default function IlanVer() {
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 sm:p-8 space-y-6">
             
             {!isLoggedIn && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-4 rounded-2xl flex items-center gap-3">
-                <span>🔒</span>
-                <div>
-                  <span className="font-bold">Uyarı:</span> İlan oluşturabilmek için sistemde kurumsal veya bireysel olarak oturum açmış olmanız gerekmektedir. Önce <Link href="/giris-yap" className="underline font-bold">Giriş Yapın</Link>.
+              <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-4 rounded-2xl flex items-start gap-3">
+                <span className="mt-0.5 text-sm">🔒</span>
+                <div className="space-y-1.5">
+                  <div>
+                    <span className="font-bold">Uyarı:</span> İlan oluşturabilmek için sistemde kurumsal veya bireysel olarak oturum açmış olmanız gerekmektedir. Önce <Link href="/giris-yap" className="underline font-bold">Giriş Yapın</Link>.
+                  </div>
+                  <div className="text-xs text-amber-900 font-semibold">
+                    Not: Uygun CDN'e bağlantımız olmadığı için bu süreçte resim yükleme alanı kapalı bırakılmıştır.
+                  </div>
                 </div>
               </div>
             )}
