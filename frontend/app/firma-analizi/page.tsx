@@ -6,6 +6,16 @@ import Sidebar from "../../components/Sidebar";
 import { apiFetch } from "@/lib/api";
 import { CompanyAnalysisData } from "@/lib/types";
 
+// Türkçe karakter bozulmalarını (  ) otomatik düzeltmek için yardımcı fonksiyon
+const fixText = (text: string | undefined | null) => {
+  if (!text) return "";
+  return text
+    .replace(/Sren/g, "Süren")
+    .replace(/elik/g, "Çelik")
+    .replace(/A\./g, "A.Ş.")
+    .replace(//g, "ç"); // Genel bozulmalar için
+};
+
 export default function FirmaAnalizi() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -147,20 +157,20 @@ export default function FirmaAnalizi() {
                     <div className="w-12 h-12 rounded-2xl bg-[#1E314A]/10 text-[#1E314A] flex items-center justify-center text-xl shrink-0">🏆</div>
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-black text-slate-900 text-sm">{data.featuredCompany.name}</h3>
+                        <h3 className="font-black text-slate-900 text-sm">{fixText(data.featuredCompany.name)}</h3>
                         {data.featuredCompany.verified && (
                           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
                             ✓ Doğrulanmış
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-500 mt-0.5">{data.featuredCompany.description}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">{fixText(data.featuredCompany.description)}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-100 text-left lg:text-right">
                     <div>
                       <span className="text-[10px] text-slate-400 font-bold block">Ana Malzeme</span>
-                      <span className="text-sm font-bold text-slate-800">{data.featuredCompany.mainMaterial}</span>
+                      <span className="text-sm font-bold text-slate-800">{fixText(data.featuredCompany.mainMaterial)}</span>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 font-bold block">Toplam Hacim</span>
@@ -186,7 +196,7 @@ export default function FirmaAnalizi() {
                   <div className="space-y-2">
                     {data.charts.materialDistribution.items.map((m) => (
                       <div key={m.name} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
-                        <span className="text-[11px] font-bold text-slate-600 sm:w-28 truncate">{m.name}</span>
+                        <span className="text-[11px] font-bold text-slate-600 sm:w-28 truncate">{fixText(m.name)}</span>
                         <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
                           <div className="h-full rounded-full" style={{ width: `${m.percentage}%`, backgroundColor: m.color }} />
                         </div>
@@ -229,8 +239,8 @@ export default function FirmaAnalizi() {
                           {filteredCompanies.map((item) => (
                             <tr key={item.id} className="hover:bg-slate-50 transition">
                               <td className="py-3.5 pr-4 font-bold text-slate-500 whitespace-nowrap">#{item.id}</td>
-                              <td className="py-3.5 pr-4 font-bold text-slate-900 whitespace-nowrap">{item.name}</td>
-                              <td className="py-3.5 pr-4 text-slate-600 whitespace-nowrap">{item.mainMaterial}</td>
+                              <td className="py-3.5 pr-4 font-bold text-slate-900 whitespace-nowrap">{fixText(item.name)}</td>
+                              <td className="py-3.5 pr-4 text-slate-600 whitespace-nowrap">{fixText(item.mainMaterial)}</td>
                               <td className="py-3.5 pr-4 text-slate-800 font-bold whitespace-nowrap">{item.totalTransactions} İlan</td>
                               <td className="py-3.5 pr-4 text-slate-700 whitespace-nowrap">{item.avgVolume}</td>
                               <td className="py-3.5 pr-4 font-black text-[#1E314A] whitespace-nowrap">
@@ -267,8 +277,8 @@ export default function FirmaAnalizi() {
                   #{selectedCompanyReport.id}
                 </div>
                 <div>
-                  <h3 className="font-black text-slate-900 text-base">{selectedCompanyReport.name}</h3>
-                  <p className="text-xs text-slate-500">Ana malzeme: {selectedCompanyReport.mainMaterial}</p>
+                  <h3 className="font-black text-slate-900 text-base">{fixText(selectedCompanyReport.name)}</h3>
+                  <p className="text-xs text-slate-500">Ana malzeme: {fixText(selectedCompanyReport.mainMaterial)}</p>
                 </div>
               </div>
               <button

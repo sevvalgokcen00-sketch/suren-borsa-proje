@@ -65,7 +65,7 @@ export default function GostergePaneli() {
     return series.map((p) => ({
       month: p.month ?? "—",
       volume: Number(p.volume) || 0,
-      heightPct: max > 0 ? Math.max((Number(p.volume) / max) * 100, 4) : 0,
+      heightPct: max > 0 ? Math.max((Number(p.volume) / max) * 100, 8) : 0,
     }));
   }, [dashboard]);
 
@@ -197,16 +197,22 @@ export default function GostergePaneli() {
 
                 {trendBars.length > 0 ? (
                   <>
-                    <div className="h-24 w-full bg-slate-50 rounded-xl border border-slate-100 flex items-end px-2 pb-2 gap-1 relative overflow-hidden">
-                      <div className="absolute top-2 left-2 text-[10px] font-bold text-slate-400">Milyon ₺</div>
-                      {trendBars.map((bar, i) => (
-                        <div
-                          key={i}
-                          title={`${bar.month}: ${bar.volume.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} milyon ₺`}
-                          className="flex-1 bg-gradient-to-t from-[#1E314A]/80 to-[#1E314A]/30 rounded-t-sm transition-all duration-500 hover:opacity-75 cursor-pointer"
-                          style={{ height: `${bar.heightPct}%` }}
-                        ></div>
-                      ))}
+                    <div className="relative pt-6">
+                      <div className="absolute top-0 left-0 text-[10px] font-bold text-slate-400">Milyon ₺</div>
+                      <div className="h-36 w-full bg-slate-50 rounded-xl border border-slate-100 flex items-end px-3 pb-3 gap-2 overflow-hidden">
+                        {trendBars.map((bar, i) => (
+                          <div
+                            key={i}
+                            title={`${bar.month}: ${bar.volume.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} milyon ₺`}
+                            className="flex-1 bg-gradient-to-t from-[#1E314A]/90 to-[#1E314A]/40 rounded-t-md transition-all duration-500 hover:opacity-75 cursor-pointer relative group"
+                            style={{ height: `${bar.heightPct}%` }}
+                          >
+                            <span className="absolute -top-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition whitespace-nowrap z-20 pointer-events-none">
+                              {bar.volume.toLocaleString("tr-TR", { maximumFractionDigits: 1 })}M
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     <div className="flex justify-between text-[11px] font-bold text-slate-500 pt-1 px-1 overflow-x-auto">
                       {trendBars.map((bar, i) => (
@@ -215,7 +221,7 @@ export default function GostergePaneli() {
                     </div>
                   </>
                 ) : (
-                  <div className="h-24 w-full bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-center">
+                  <div className="h-36 w-full bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-center">
                     <span className="text-xs text-slate-400 font-semibold">Henüz trend verisi oluşmadı.</span>
                   </div>
                 )}
