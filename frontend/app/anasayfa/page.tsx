@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import SteelTickerBar from "../../components/SteelTickerBar";
 
-// %100 DEMİR-ÇELİK VE METAL SEKTÖRÜNE ÖZEL GENİŞLETİLMİŞ BORSA VERİSİ
 const marketData = [
   {
     id: "DEM-01",
