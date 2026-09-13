@@ -150,13 +150,14 @@ router.post('/', async (req, res) => {
     const priceVal = parseFloat(b.price) || 0;
     const cityVal = b.locationCity || b.city || 'Kocaeli';
     const catVal = b.category || 'Metal';
+    const userIdVal = b.userId || b.user_id || 1;
 
     const result = await db.run(
       `INSERT INTO listings 
       (user_id, title, material_type, weight, price, city, image_url, status, is_archived, materialType, category) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)`,
       [
-        1,
+        userIdVal,
         titleVal,
         matTypeVal,
         weightVal,
@@ -229,4 +230,18 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Kullanıcının kendi ilanlarını getiren endpoint (İlanlarım sayfası için)
+router.get('/user/:userId', async (req, res) => {
+  try {
+    const db = await getDb();
+    const { userId } = req.params;
+    const listings = await db.all(
+      'SELECT * FROM listings WHERE user_id = ? ORDER BY id DESC',
+      [userId]
+    );
+    res.json(listings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 module.exports = router;
