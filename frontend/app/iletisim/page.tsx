@@ -16,18 +16,17 @@ export default function IletisimPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitted(true);
-    // Buraya API post isteği bağlanabilir
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans flex text-slate-800">
+    <div className="min-h-screen bg-[#f8fafc] font-sans flex flex-col lg:flex-row text-slate-800">
       {/* SOL MENÜ */}
       <Sidebar />
 
       {/* SAĞ İÇERİK ALANI */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* HEADER */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div>
             <h1 className="font-bold text-slate-900 text-lg flex items-center gap-2">
               <span>💬</span> Kurumsal İletişim & Destek
@@ -38,14 +37,14 @@ export default function IletisimPage() {
           </div>
           <Link
             href="/"
-            className="text-xs font-bold text-slate-500 hover:text-[#1E314A] transition"
+            className="text-xs font-bold text-slate-500 hover:text-[#1E314A] transition text-right sm:text-left"
           >
             ← Ana Sayfaya Dön
           </Link>
         </header>
 
-        {/* ANA İÇERİK (Üstteki adres ve bilgi kartları tamamen kaldırıldı) */}
-        <main className="p-6 max-w-6xl mx-auto w-full space-y-8">
+        {/* ANA İÇERİK */}
+        <main className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto w-full space-y-8 overflow-y-auto">
           
           {/* FORM VE SAĞ BİLGİ ALANI */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -156,7 +155,7 @@ export default function IletisimPage() {
 
                   <button
                     type="submit"
-                    className="w-full bg-[#1E314A] hover:bg-[#152336] text-white font-bold py-3.5 rounded-xl text-xs transition shadow-md shadow-[#1E314A]/20"
+                    className="w-full bg-[#1E314A] hover:bg-[#152336] text-white font-bold py-3.5 rounded-xl text-xs transition shadow-md shadow-[#1E314A]/25"
                   >
                     💬 Talebi İlet ve Temsilciyle Eşleş
                   </button>
@@ -164,7 +163,7 @@ export default function IletisimPage() {
               )}
             </div>
 
-            {/* SAĞ 5 KOLON: SSS, OPERASYON SAATLERİ VE TELEFON/E-POSTA BİLGİLERİ */}
+            {/* SAĞ 5 KOLON: SSS, OPERASYON SAATLERİ VE BİLGİLER */}
             <div className="lg:col-span-5 space-y-4">
               
               {/* SIKÇA SORULAN SORULAR */}
@@ -209,7 +208,7 @@ export default function IletisimPage() {
                 </p>
               </div>
 
-              {/* OPERASYON SAATLERİNİN ALTINA TAŞINAN HAT & E-POSTA KARTLARI */}
+              {/* HAT & E-POSTA KARTLARI */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-2">
                   <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-xl font-bold">

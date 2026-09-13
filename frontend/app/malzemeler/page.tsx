@@ -15,25 +15,6 @@ import {
   listingImages,
 } from "@/lib/types";
 
-/**
- * MALZEME LİSTELEME — GET /api/listings
- *
- * FİLTRELEME STRATEJİSİ (neden bazıları sunucuda, bazıları istemcide):
- *
- *   search      -> SUNUCU (?search=)      title + description üzerinde LIKE. Sorunsuz.
- *   kondisyon   -> SUNUCU (?materialType=) DİKKAT: parametre adı yanıltıcı, backend
- *                  bunu usageStatus KOLONUNA uyguluyor (listings.js:49).
- *   min/maxPrice-> SUNUCU (?minPrice=&maxPrice=) Sorunsuz.
- *
- *   malzeme türü-> İSTEMCİ. Backend'de material_type/materialType için sorgu
- *                  parametresi YOK.
- *   şehir       -> İSTEMCİ. Backend ?city= parametresini locationCity kolonuna
- *                  uyguluyor, ancak POST /api/listings yalnızca `city` kolonunu
- *                  yazıyor; locationCity NULL kalıyor. Sunucu tarafı kullanılsaydı
- *                  uygulama üzerinden oluşturulan ilanlar şehir filtresinde
- *                  KAYBOLURDU. İstemcide city ?? locationCity ile eşleştiriyoruz.
- */
-
 const HEPSI = "Hepsi";
 
 export default function Malzemeler() {
@@ -45,8 +26,7 @@ export default function Malzemeler() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Açılır liste seçenekleri filtresiz veri kümesinden türetilir; böylece bir
-  // filtre uygulandığında seçenekler kaybolmaz.
+  // Açılır liste seçenekleri filtresiz veri kümesinden türetilir
   const [optionSource, setOptionSource] = useState<Listing[]>([]);
 
   // Form durumu (henüz uygulanmamış seçimler)
@@ -76,7 +56,6 @@ export default function Malzemeler() {
       try {
         const qs = new URLSearchParams();
         if (opts?.search) qs.set("search", opts.search);
-        // Backend bu parametreyi usageStatus kolonuna uygular (yukarıdaki nota bakın)
         if (opts?.condition && opts.condition !== HEPSI) qs.set("materialType", opts.condition);
         if (opts?.minPrice) qs.set("minPrice", opts.minPrice);
         if (opts?.maxPrice) qs.set("maxPrice", opts.maxPrice);
@@ -88,8 +67,6 @@ export default function Malzemeler() {
         if (opts?.isInitial) setOptionSource(rows);
       } catch (err) {
         console.error("İlanlar çekilemedi:", err);
-        // Sahte veriye DÜŞÜLMEZ: var olmayan ilanlar göstermek, hatayı
-        // göstermekten daha kötüdür.
         setListings([]);
         setError(
           err instanceof Error
@@ -107,7 +84,6 @@ export default function Malzemeler() {
     loadListings({ isInitial: true });
   }, [loadListings]);
 
-  // Açılır liste seçenekleri gerçek veriden türetilir (sabit liste yok)
   const materialTypeOptions = useMemo(
     () => Array.from(new Set(optionSource.map(listingMaterial))).sort((a, b) => a.localeCompare(b, "tr")),
     [optionSource]
@@ -124,7 +100,6 @@ export default function Malzemeler() {
     [optionSource]
   );
 
-  // İstemci tarafı filtreler (bkz. dosya başındaki strateji notu)
   const visibleListings = useMemo(
     () =>
       listings.filter((l) => {
@@ -162,12 +137,12 @@ export default function Malzemeler() {
   const labelClass = "text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5";
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans flex text-slate-800">
+    <div className="min-h-screen bg-[#f8fafc] font-sans flex flex-col lg:flex-row text-slate-800">
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* ÜST HEADER */}
-        <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-end gap-4">
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 flex items-center justify-end gap-4">
           <div className="flex items-center gap-4 text-xs">
             <button className="relative text-base p-2 bg-slate-100/80 rounded-xl hover:bg-slate-200/60 transition">
               🔔{" "}
@@ -179,7 +154,7 @@ export default function Malzemeler() {
             <div className="border-l border-slate-200 pl-4 flex items-center gap-3">
               {isLoggedIn ? (
                 <div className="flex items-center gap-2 cursor-pointer">
-                  <div className="w-8 h-8 rounded-full bg-[#1E314A] text-white font-bold flex items-center justify-center text-xs">
+                  <div className="w-8 h-8 rounded-full bg-[#1E314A] text-white font-bold flex items-center justify-center text-xs shrink-0">
                     AY
                   </div>
                   <button onClick={() => setIsLoggedIn(false)} className="font-bold text-slate-500 hover:text-red-500 transition">
@@ -200,7 +175,7 @@ export default function Malzemeler() {
           </div>
         </header>
 
-        <main className="flex-1 p-6 space-y-5 w-full">
+        <main className="flex-1 p-4 sm:p-6 space-y-5 w-full overflow-y-auto">
           {showIndex && (
             <div className="w-full">
               <SteelPriceIndex />
@@ -217,14 +192,14 @@ export default function Malzemeler() {
 
             <Link
               href="/ilan-ver"
-              className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5"
+              className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-sm transition flex items-center gap-1.5 shrink-0"
             >
               <span>+</span> Malzeme İlanı Ekle
             </Link>
           </div>
 
           {/* 🔍 FİLTRELEME ÇUBUĞU */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4 w-full">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4 w-full">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className={labelClass}>İlan Ara (Başlık / Açıklama)</label>

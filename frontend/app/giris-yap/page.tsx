@@ -48,34 +48,34 @@ export default function GirisYap() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans flex flex-col justify-center items-center p-4">
+    <div className="min-h-screen bg-[#f8fafc] font-sans flex flex-col justify-center items-center px-4 py-8 sm:px-6 lg:px-8">
       
       {/* ÜST LOGO */}
-      <Link href="/" className="flex items-center gap-2 mb-8 group">
+      <Link href="/" className="flex items-center gap-2 mb-6 sm:mb-8 group">
         <div className="w-10 h-10 flex items-center justify-center text-[#1E314A] text-2xl group-hover:scale-105 transition">
           ♻️
         </div>
-        <span className="text-2xl font-black tracking-tight text-slate-900">
+        <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
           Döngü<span className="text-[#1E314A]">Borsa</span>
         </span>
       </Link>
 
       {/* GİRİŞ KARTI */}
-      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-8 space-y-6 relative">
+      <div className="w-full max-w-md bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-6 sm:p-8 space-y-6 relative">
         
         {/* ANASAYFAYA DÖN / KAPAT ÇARPI */}
         <Link
           href="/"
           title="Anasayfaya Dön"
-          className="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center text-sm font-bold transition"
+          className="absolute top-5 right-5 sm:top-6 sm:right-6 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center text-sm font-bold transition"
         >
           ✕
         </Link>
 
         {/* BAŞLIK */}
         <div className="text-center space-y-1.5 pr-6">
-          <h1 className="text-2xl font-bold text-slate-900">Hesabınıza Giriş Yapın</h1>
-          <p className="text-xs text-slate-500">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Hesabınıza Giriş Yapın</h1>
+          <p className="text-xs text-slate-500 leading-relaxed">
             Pazaryerindeki işlemlerinizi yönetmek için hesap türünü seçin.
           </p>
         </div>
@@ -85,7 +85,7 @@ export default function GirisYap() {
           <button
             type="button"
             onClick={() => setUserType("kurumsal")}
-            className={`py-2 text-xs font-bold rounded-xl transition ${
+            className={`py-2 text-xs font-bold rounded-xl transition truncate px-2 ${
               userType === "kurumsal"
                 ? "bg-white text-[#1E314A] shadow-sm"
                 : "text-slate-500 hover:text-slate-800"
@@ -96,7 +96,7 @@ export default function GirisYap() {
           <button
             type="button"
             onClick={() => setUserType("bireysel")}
-            className={`py-2 text-xs font-bold rounded-xl transition ${
+            className={`py-2 text-xs font-bold rounded-xl transition truncate px-2 ${
               userType === "bireysel"
                 ? "bg-white text-[#1E314A] shadow-sm"
                 : "text-slate-500 hover:text-slate-800"
@@ -108,8 +108,8 @@ export default function GirisYap() {
 
         {/* HATA MESAJI */}
         {errorMessage && (
-          <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-3.5 rounded-2xl flex items-center gap-2 font-semibold">
-            <span>⚠️</span>
+          <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-3.5 rounded-2xl flex items-start sm:items-center gap-2 font-semibold">
+            <span className="shrink-0">⚠️</span>
             <span>{errorMessage}</span>
           </div>
         )}
@@ -130,7 +130,7 @@ export default function GirisYap() {
                 placeholder={userType === "kurumsal" ? "kurumsal@fabrika.com" : "ornek@gmail.com"}
                 className="w-full bg-slate-50 border border-slate-200 focus:border-[#1E314A] focus:bg-white text-slate-900 text-sm px-4 py-3 rounded-2xl outline-none transition font-medium"
               />
-              <span className="absolute right-4 top-3.5 text-slate-400 text-sm">✉️</span>
+              <span className="absolute right-4 top-3.5 text-slate-400 text-sm pointer-events-none">✉️</span>
             </div>
           </div>
 
@@ -150,12 +150,12 @@ export default function GirisYap() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-slate-50 border border-slate-200 focus:border-[#1E314A] focus:bg-white text-slate-900 text-sm px-4 py-3 rounded-2xl outline-none transition font-medium"
+                className="w-full bg-slate-50 border border-slate-200 focus:border-[#1E314A] focus:bg-white text-slate-900 text-sm px-4 py-3 rounded-2xl outline-none transition font-medium pr-20"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 text-xs font-bold transition"
               >
                 {showPassword ? "Gizle 👁️" : "Göster 👁️"}
               </button>
@@ -201,7 +201,7 @@ export default function GirisYap() {
 
       </div>
 
-      <p className="text-[11px] text-slate-400 mt-8 font-medium">
+      <p className="text-[11px] text-slate-400 mt-6 sm:mt-8 font-medium text-center">
         © 2026 DöngüBorsa • B2B Sürdürülebilir Pazaryeri Platformu
       </p>
 

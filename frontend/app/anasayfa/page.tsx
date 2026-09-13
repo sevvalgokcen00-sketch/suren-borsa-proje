@@ -158,16 +158,18 @@ export default function AnaSayfa() {
     <div className="min-h-screen bg-[#f8fafc] font-sans text-slate-800 flex flex-col justify-between">
       {/* 1. HEADER & KAYAN BORSA ŞERİDİ */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3.5 flex items-center justify-between gap-4">
-          {/* LOGO - Artık tıklandığında en dıştaki app/page.tsx sayfasına (/) gider */}
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 flex items-center justify-center text-[#1E314A] text-xl group-hover:scale-105 transition">
-              ♻️
-            </div>
-            <span className="text-xl font-black tracking-tight text-[#1E314A]">
-              DöngüBorsa
-            </span>
-          </Link>
+        <div className="max-w-7xl mx-auto px-4 py-3.5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+          
+          <div className="flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <div className="w-8 h-8 flex items-center justify-center text-[#1E314A] text-xl group-hover:scale-105 transition">
+                ♻️
+              </div>
+              <span className="text-xl font-black tracking-tight text-[#1E314A]">
+                DöngüBorsa
+              </span>
+            </Link>
+          </div>
 
           <div className="flex-1 max-w-2xl flex items-center bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden p-1 focus-within:border-[#1E314A] transition">
             <input
@@ -185,18 +187,18 @@ export default function AnaSayfa() {
             </Link>
           </div>
 
-          <div className="flex items-center gap-4 text-xs">
-            <div className="border-l border-slate-200 pl-4 flex items-center gap-3">
+          <div className="flex items-center justify-end gap-4 text-xs">
+            <div className="border-t md:border-t-0 md:border-l border-slate-200 pt-3 md:pt-0 md:pl-4 flex items-center gap-3">
               {isLoggedIn ? (
                 <div className="flex items-center gap-3">
                   <Link
                     href="/gosterge-paneli"
                     className="flex items-center gap-2 group hover:opacity-80 transition"
                   >
-                    <div className="w-8 h-8 rounded-full bg-[#1E314A]/10 text-[#1E314A] flex items-center justify-center font-bold text-xs border border-[#1E314A]/20">
+                    <div className="w-8 h-8 rounded-full bg-[#1E314A]/10 text-[#1E314A] flex items-center justify-center font-bold text-xs border border-[#1E314A]/20 shrink-0">
                       👤
                     </div>
-                    <span className="font-bold text-slate-900">
+                    <span className="font-bold text-slate-900 truncate max-w-[120px] sm:max-w-none">
                       Merhaba,{" "}
                       <span className="text-[#1E314A] group-hover:underline">
                         {userName}
@@ -205,23 +207,23 @@ export default function AnaSayfa() {
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="text-slate-400 hover:text-red-600 font-bold ml-2 transition"
+                    className="text-slate-400 hover:text-red-600 font-bold ml-2 transition shrink-0"
                     title="Çıkış Yap"
                   >
                     🚪 Çıkış
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full md:w-auto justify-end">
                   <Link
                     href="/giris-yap"
-                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm text-center"
                   >
                     Giriş Yap
                   </Link>
                   <Link
                     href="/kayit-ol"
-                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm text-center"
                   >
                     Kayıt Ol
                   </Link>
@@ -296,9 +298,10 @@ export default function AnaSayfa() {
           className="absolute inset-0 z-0 bg-cover bg-center"
           style={{ backgroundImage: `url('/metalyigini.jpg')` }}
         ></div>
+        <div className="absolute inset-0 bg-slate-950/40 z-0"></div>
 
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
-          <div className="space-y-4 max-w-2xl">
+          <div className="space-y-4 max-w-2xl text-center md:text-left">
             <span className="bg-[#1E314A]/90 text-white border border-[#1E314A] text-[11px] font-bold px-3.5 py-1 rounded-full inline-block backdrop-blur-md">
               🦾 B2B Endüstriyel Demir-Çelik & Metal Pazaryeri
             </span>
@@ -311,28 +314,28 @@ export default function AnaSayfa() {
             <p className="text-slate-200 text-xs sm:text-sm leading-relaxed drop-shadow">
               <strong className="text-white">
                 Türkiye&apos;nin Sanayi Atık ve Geri Dönüşüm Borsa Tahtası.
-            </strong>{" "}
+              </strong>{" "}
               Demir-Çelik fabrikalarından arta kalan henüz işlenmemiş ham üretim artığı stokları ve metalleri
               şeffaf medyan endeks fiyatlarıyla anlık pazarlayın.
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5 text-xs font-black shrink-0">
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-2.5 text-xs font-black shrink-0">
             <Link
               href="/ilanlar-paneli"
-              className="bg-white hover:bg-slate-100 text-[#1E314A] px-5 py-3 rounded-xl shadow-lg shadow-black/20 transition"
+              className="bg-white hover:bg-slate-100 text-[#1E314A] px-5 py-3 rounded-xl shadow-lg shadow-black/20 transition text-center"
             >
               Tüm İlanları İncele →
             </Link>
             <Link
               href="/ilan-ver"
-              className="bg-white hover:bg-slate-100 text-[#1E314A] px-5 py-3 rounded-xl shadow-lg shadow-black/20 transition"
+              className="bg-white hover:bg-slate-100 text-[#1E314A] px-5 py-3 rounded-xl shadow-lg shadow-black/20 transition text-center"
             >
               + İlan Ver
             </Link>
             <Link
               href="/iletisim"
-              className="bg-white hover:bg-slate-100 text-[#1E314A] px-5 py-3 rounded-xl shadow-lg shadow-black/20 transition flex items-center gap-1.5"
+              className="bg-white hover:bg-slate-100 text-[#1E314A] px-5 py-3 rounded-xl shadow-lg shadow-black/20 transition flex items-center justify-center gap-1.5"
             >
               <span>💬</span>
               <span>İletişime Geçin</span>
@@ -341,7 +344,7 @@ export default function AnaSayfa() {
         </div>
       </section>
 
-      {/* 3. DEMİR-ÇELİK BORSA İŞLEM TAHTASI (ORTALANMIŞ) */}
+      {/* 3. DEMİR-ÇELİK BORSA İŞLEM TAHTASI */}
       <main className="max-w-7xl mx-auto px-4 py-8 space-y-6 w-full flex-1">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
           <div>
@@ -352,94 +355,96 @@ export default function AnaSayfa() {
         </div>
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="border-b border-slate-200 bg-slate-50 text-slate-400 font-bold uppercase text-[10px] tracking-wider select-none">
-                  <th className="py-3.5 px-4">İsim / Sembol</th>
-                  <th className="py-3.5 px-4 text-right">Son (Medyan)</th>
-                  <th className="py-3.5 px-4 text-right">Yüksek</th>
-                  <th className="py-3.5 px-4 text-right">Düşük</th>
-                  <th className="py-3.5 px-4 text-right">Fark</th>
-                  <th className="py-3.5 px-4 text-right">Fark %</th>
-                  <th className="py-3.5 px-4 text-right">Hacim</th>
-                  <th className="py-3.5 px-4 text-center">İşlem</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredData.map((item) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-slate-50/80 transition duration-150 group cursor-pointer"
-                  >
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-2 h-2 rounded-full bg-[#1E314A] shrink-0"></span>
-                        <div>
-                          <span className="font-bold text-slate-900 group-hover:text-[#1E314A] transition block text-sm">
-                            {item.name}
-                          </span>
-                          <span className="text-[10px] font-mono text-slate-400">
-                            {item.code} • {item.category}
-                          </span>
-                        </div>
-                      </div>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right font-black text-slate-900 text-sm font-mono">
-                      {item.lastPrice}{" "}
-                      <span className="text-[10px] font-normal text-slate-400">
-                        TL
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right font-mono text-slate-600">
-                      {item.high}
-                    </td>
-
-                    <td className="py-3.5 px-4 text-right font-mono text-slate-600">
-                      {item.low}
-                    </td>
-
-                    <td
-                      className={`py-3.5 px-4 text-right font-bold font-mono ${
-                        item.isUp ? "text-emerald-600" : "text-red-600"
-                      }`}
+          <div className="overflow-x-auto w-full -mx-4 sm:mx-0">
+            <div className="inline-block min-w-full align-middle px-4 sm:px-0">
+              <table className="w-full text-left border-collapse text-xs min-w-[700px]">
+                <thead>
+                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-400 font-bold uppercase text-[10px] tracking-wider select-none">
+                    <th className="py-3.5 px-4">İsim / Sembol</th>
+                    <th className="py-3.5 px-4 text-right">Son (Medyan)</th>
+                    <th className="py-3.5 px-4 text-right">Yüksek</th>
+                    <th className="py-3.5 px-4 text-right">Düşük</th>
+                    <th className="py-3.5 px-4 text-right">Fark</th>
+                    <th className="py-3.5 px-4 text-right">Fark %</th>
+                    <th className="py-3.5 px-4 text-right">Hacim</th>
+                    <th className="py-3.5 px-4 text-center">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {filteredData.map((item) => (
+                    <tr
+                      key={item.id}
+                      className="hover:bg-slate-50/80 transition duration-150 group cursor-pointer"
                     >
-                      {item.change}
-                    </td>
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-2 h-2 rounded-full bg-[#1E314A] shrink-0"></span>
+                          <div>
+                            <span className="font-bold text-slate-900 group-hover:text-[#1E314A] transition block text-sm">
+                              {item.name}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-400">
+                              {item.code} • {item.category}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
 
-                    <td className="py-3.5 px-4 text-right">
-                      <span
-                        className={`inline-block font-bold font-mono text-[11px] px-1.5 py-0.5 rounded ${
-                          item.isUp
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-red-50 text-red-700"
+                      <td className="py-3.5 px-4 text-right font-black text-slate-900 text-sm font-mono whitespace-nowrap">
+                        {item.lastPrice}{" "}
+                        <span className="text-[10px] font-normal text-slate-400">
+                          TL
+                        </span>
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right font-mono text-slate-600 whitespace-nowrap">
+                        {item.high}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-right font-mono text-slate-600 whitespace-nowrap">
+                        {item.low}
+                      </td>
+
+                      <td
+                        className={`py-3.5 px-4 text-right font-bold font-mono whitespace-nowrap ${
+                          item.isUp ? "text-emerald-600" : "text-red-600"
                         }`}
                       >
-                        {item.changePercent}
-                      </span>
-                    </td>
+                        {item.change}
+                      </td>
 
-                    <td className="py-3.5 px-4 text-right font-mono text-slate-500">
-                      {item.volume}
-                    </td>
+                      <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                        <span
+                          className={`inline-block font-bold font-mono text-[11px] px-1.5 py-0.5 rounded ${
+                            item.isUp
+                              ? "bg-emerald-50 text-emerald-700"
+                              : "bg-red-50 text-red-700"
+                          }`}
+                        >
+                          {item.changePercent}
+                        </span>
+                      </td>
 
-                    <td className="py-3.5 px-4 text-center">
-                      <Link
-                        href="/ilanlar-paneli"
-                        className="bg-slate-100 hover:bg-[#1E314A] hover:text-white text-slate-700 font-bold px-3 py-1.5 rounded-lg transition text-[11px] inline-block"
-                      >
-                        İlanlar ({item.txCount})
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      <td className="py-3.5 px-4 text-right font-mono text-slate-500 whitespace-nowrap">
+                        {item.volume}
+                      </td>
+
+                      <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                        <Link
+                          href="/ilanlar-paneli"
+                          className="bg-slate-100 hover:bg-[#1E314A] hover:text-white text-slate-700 font-bold px-3 py-1.5 rounded-lg transition text-[11px] inline-block"
+                        >
+                          İlanlar ({item.txCount})
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
 
-          <div className="bg-slate-50 px-4 py-2.5 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
+          <div className="bg-slate-50 px-4 py-2.5 border-t border-slate-200 text-[11px] text-slate-500 flex flex-col sm:flex-row items-center justify-between gap-2">
             <span>
               📌 Fiyatlar tamamlanmış borsa işlemlerinin medyanı alınarak 15 dakikada bir güncellenir.
             </span>
@@ -455,16 +460,15 @@ export default function AnaSayfa() {
 
       {/* 4. FOOTER */}
       <footer className="bg-slate-900 text-white border-t border-slate-800 text-xs py-10 mt-12 w-full">
-        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
           <div className="space-y-3">
-            {/* FOOTER LOGO - Tıklandığında en dıştaki app/page.tsx sayfasına (/) gider */}
             <Link href="/" className="flex items-center gap-2 group inline-flex">
               <div className="w-8 h-8 flex items-center justify-center text-white text-base">
                 ♻️
-            </div>
-            <span className="text-lg font-black tracking-tight text-white">
-              Döngü<span className="text-[#729CD4]">Borsa</span>
-            </span>
+              </div>
+              <span className="text-lg font-black tracking-tight text-white">
+                Döngü<span className="text-[#729CD4]">Borsa</span>
+              </span>
             </Link>
             <p className="text-slate-400 text-[11px] leading-relaxed">
               B2B endüstriyel demir-çelik ve metal geri dönüşüm borsası.

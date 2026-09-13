@@ -32,17 +32,17 @@ function OdemeContent() {
 
   if (isCompleted) {
     return (
-      <div className="max-w-xl mx-auto mt-16 bg-white p-8 rounded-3xl shadow-xl border border-slate-100 text-center">
+      <div className="max-w-xl mx-auto mt-16 bg-white p-6 sm:p-8 rounded-3xl shadow-xl border border-slate-100 text-center mx-4 sm:mx-auto">
         <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
           ✓
         </div>
-        <h2 className="text-2xl font-black text-slate-800">İşlem Başarıyla Başlatıldı!</h2>
-        <p className="text-slate-500 text-sm mt-2">
+        <h2 className="text-xl sm:text-2xl font-black text-slate-800">İşlem Başarıyla Başlatıldı!</h2>
+        <p className="text-slate-500 text-xs sm:text-sm mt-2 leading-relaxed">
           Güvenli Ticaret & Emanet (Escrow) hesabına ödeme provizyonu alındı. Mal teslimi ve kantar onayından sonra tutar satıcıya aktarılacaktır.
         </p>
         <div className="mt-6 p-4 bg-slate-50 rounded-2xl text-left text-xs text-slate-600 space-y-1.5">
           <p><strong className="text-slate-800">Referans Kodu:</strong> TR-{Math.floor(100000 + Math.random() * 900000)}</p>
-          <p><strong className="text-slate-800">İşlem Kalemi:</strong> {listingTitle}</p>
+          <p className="truncate"><strong className="text-slate-800">İşlem Kalemi:</strong> {listingTitle}</p>
           <p><strong className="text-slate-800">Tutar:</strong> {totalAmount > 0 ? `${totalAmount.toLocaleString("tr-TR")} TL` : `${price} TL/Birim`}</p>
         </div>
         <Link
@@ -56,15 +56,15 @@ function OdemeContent() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
+    <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black text-slate-800">Ticari Süreç & Güvenli Ödeme</h1>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-800">Ticari Süreç & Güvenli Ödeme</h1>
           <p className="text-xs text-slate-500 mt-0.5">Onaylanan teklifinizin resmi sözleşme ve ödeme adımı</p>
         </div>
         <button
           onClick={() => router.back()}
-          className="text-xs font-semibold text-slate-500 hover:text-slate-800 bg-slate-100 px-3 py-1.5 rounded-lg transition"
+          className="text-xs font-semibold text-slate-500 hover:text-slate-800 bg-slate-100 px-3 py-1.5 rounded-lg transition self-start sm:self-auto"
         >
           ← Vazgeç & Geri Dön
         </button>
@@ -73,12 +73,12 @@ function OdemeContent() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Sol / Orta Panel: Sipariş ve Şartlar Özeti */}
         <div className="md:col-span-2 space-y-4">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
             <h3 className="text-sm font-bold text-slate-700 border-b pb-2 mb-3">Anlaşma Özeti</h3>
-            <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
               <div className="bg-slate-50 p-3 rounded-xl">
                 <span className="text-slate-400 block mb-0.5">İlan / Ürün</span>
-                <span className="font-bold text-slate-800">{listingTitle}</span>
+                <span className="font-bold text-slate-800 truncate block">{listingTitle}</span>
               </div>
               <div className="bg-slate-50 p-3 rounded-xl">
                 <span className="text-slate-400 block mb-0.5">Miktar</span>
@@ -95,34 +95,34 @@ function OdemeContent() {
             </div>
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm">
             <h3 className="text-sm font-bold text-slate-700 border-b pb-2 mb-3">Ödeme Yöntemi Seçimi</h3>
             <div className="space-y-2.5">
-              <label className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition ${paymentMethod === "escrow" ? "border-emerald-500 bg-emerald-50/30 ring-1 ring-emerald-500" : "border-slate-200 hover:bg-slate-50"}`}>
-                <div className="flex items-center gap-3">
+              <label className={`flex items-start sm:items-center justify-between p-3.5 rounded-xl border cursor-pointer transition gap-3 ${paymentMethod === "escrow" ? "border-emerald-500 bg-emerald-50/30 ring-1 ring-emerald-500" : "border-slate-200 hover:bg-slate-50"}`}>
+                <div className="flex items-start sm:items-center gap-3">
                   <input
                     type="radio"
                     name="pm"
                     checked={paymentMethod === "escrow"}
                     onChange={() => setPaymentMethod("escrow")}
-                    className="text-emerald-600 focus:ring-emerald-500"
+                    className="text-emerald-600 focus:ring-emerald-500 mt-0.5 sm:mt-0"
                   />
                   <div>
                     <p className="text-xs font-bold text-slate-800">Süren Borsa Güvenli Havuz (Escrow)</p>
                     <p className="text-[11px] text-slate-500">Para kantar onayı verilene kadar güvende tutulur.</p>
                   </div>
                 </div>
-                <span className="text-[11px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded">Tavsiye Edilen</span>
+                <span className="text-[10px] sm:text-[11px] bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded shrink-0">Tavsiye Edilen</span>
               </label>
 
-              <label className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition ${paymentMethod === "direct" ? "border-emerald-500 bg-emerald-50/30 ring-1 ring-emerald-500" : "border-slate-200 hover:bg-slate-50"}`}>
-                <div className="flex items-center gap-3">
+              <label className={`flex items-start sm:items-center justify-between p-3.5 rounded-xl border cursor-pointer transition gap-3 ${paymentMethod === "direct" ? "border-emerald-500 bg-emerald-50/30 ring-1 ring-emerald-500" : "border-slate-200 hover:bg-slate-50"}`}>
+                <div className="flex items-start sm:items-center gap-3">
                   <input
                     type="radio"
                     name="pm"
                     checked={paymentMethod === "direct"}
                     onChange={() => setPaymentMethod("direct")}
-                    className="text-emerald-600 focus:ring-emerald-500"
+                    className="text-emerald-600 focus:ring-emerald-500 mt-0.5 sm:mt-0"
                   />
                   <div>
                     <p className="text-xs font-bold text-slate-800">Banka Havalesi / Doğrudan EFT</p>
@@ -136,7 +136,7 @@ function OdemeContent() {
 
         {/* Sağ Panel: Tutar & Onay */}
         <div className="space-y-4">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col justify-between">
             <div>
               <h3 className="text-sm font-bold text-slate-700 mb-3">Ödeme Dökümü</h3>
               <div className="space-y-2 text-xs border-b pb-3 text-slate-600">
@@ -151,14 +151,14 @@ function OdemeContent() {
               </div>
               <div className="flex justify-between items-center pt-3 mb-4">
                 <span className="text-xs font-bold text-slate-800">Toplam:</span>
-                <span className="text-lg font-black text-emerald-700">{totalAmount.toLocaleString("tr-TR")} TL</span>
+                <span className="text-base sm:text-lg font-black text-emerald-700">{totalAmount.toLocaleString("tr-TR")} TL</span>
               </div>
             </div>
 
             <button
               onClick={handleCompleteOrder}
               disabled={isProcessing}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-2"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-xs transition shadow-md flex items-center justify-center gap-2"
             >
               {isProcessing ? "İşleniyor..." : "Süreci Başlat & Onayla 🤝"}
             </button>

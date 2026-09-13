@@ -57,32 +57,32 @@ export default function KayitOl() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans flex flex-col justify-center items-center p-4 py-8">
+    <div className="min-h-screen bg-[#f8fafc] font-sans flex flex-col justify-center items-center px-4 py-8 sm:px-6 lg:px-8">
       
       {/* ÜST LOGO */}
-      <Link href="/" className="flex items-center gap-2 mb-6 group">
+      <Link href="/" className="flex items-center gap-2 mb-6 sm:mb-8 group">
         <div className="w-10 h-10 flex items-center justify-center text-[#1E314A] text-2xl group-hover:scale-105 transition">
           ♻️
         </div>
-        <span className="text-2xl font-black tracking-tight text-slate-900">
+        <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
           Döngü<span className="text-[#1E314A]">Borsa</span>
         </span>
       </Link>
 
       {/* KAYIT KARTI */}
-      <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-8 space-y-6 relative">
+      <div className="w-full max-w-lg bg-white rounded-3xl border border-slate-200/80 shadow-xl shadow-slate-200/50 p-6 sm:p-8 space-y-6 relative">
         
-        <Link href="/" className="absolute top-6 right-6 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold transition">✕</Link>
+        <Link href="/" className="absolute top-5 right-5 sm:top-6 sm:right-6 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold transition">✕</Link>
 
         <div className="text-center space-y-1.5 pr-6">
-          <h1 className="text-2xl font-bold text-slate-900">Hesabınızı Oluşturun</h1>
-          <p className="text-xs text-slate-500">Döngüsel ekonomi pazaryerine katılarak atık malzemelerinizi ticarete dönüştürün.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Hesabınızı Oluşturun</h1>
+          <p className="text-xs text-slate-500 leading-relaxed">Döngüsel ekonomi pazaryerine katılarak atık malzemelerinizi ticarete dönüştürün.</p>
         </div>
 
         {/* HESAP TÜRÜ SEÇİMİ */}
         <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-2xl">
-          <button type="button" onClick={() => setUserType("kurumsal")} className={`py-2 text-xs font-bold rounded-xl transition ${userType === "kurumsal" ? "bg-white text-[#1E314A] shadow-sm" : "text-slate-500"}`}>🏢 Kurumsal</button>
-          <button type="button" onClick={() => setUserType("bireysel")} className={`py-2 text-xs font-bold rounded-xl transition ${userType === "bireysel" ? "bg-white text-[#1E314A] shadow-sm" : "text-slate-500"}`}>👤 Bireysel</button>
+          <button type="button" onClick={() => setUserType("kurumsal")} className={`py-2 text-xs font-bold rounded-xl transition truncate px-2 ${userType === "kurumsal" ? "bg-white text-[#1E314A] shadow-sm" : "text-slate-500"}`}>🏢 Kurumsal</button>
+          <button type="button" onClick={() => setUserType("bireysel")} className={`py-2 text-xs font-bold rounded-xl transition truncate px-2 ${userType === "bireysel" ? "bg-white text-[#1E314A] shadow-sm" : "text-slate-500"}`}>👤 Bireysel</button>
         </div>
 
         {errorMessage && (
@@ -118,16 +118,16 @@ export default function KayitOl() {
           <div className="space-y-1">
             <label className="block text-xs font-bold text-slate-700 uppercase">Şifre *</label>
             <div className="relative">
-              <input type={showPassword ? "text" : "password"} name="password" required value={formData.password} onChange={handleChange} placeholder="En az 6 karakter" className="w-full bg-slate-50 border border-slate-200 focus:border-[#1E314A] text-slate-900 text-sm px-4 py-3 rounded-2xl outline-none transition" />
+              <input type={showPassword ? "text" : "password"} name="password" required value={formData.password} onChange={handleChange} placeholder="En az 6 karakter" className="w-full bg-slate-50 border border-slate-200 focus:border-[#1E314A] text-slate-900 text-sm px-4 py-3 rounded-2xl outline-none transition pr-20" />
               <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-3.5 text-slate-400 text-xs font-bold">{showPassword ? "Gizle 👁️" : "Göster 👁️"}</button>
             </div>
           </div>
 
           <div className="pt-2">
             <label className="flex items-start gap-2.5 cursor-pointer">
-              <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} className="w-4 h-4 rounded text-[#1E314A] focus:ring-[#1E314A] border-slate-300 accent-[#1E314A] mt-0.5" />
+              <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} className="w-4 h-4 rounded text-[#1E314A] focus:ring-[#1E314A] border-slate-300 accent-[#1E314A] mt-0.5 shrink-0" />
               <span className="text-xs text-slate-600 font-medium leading-relaxed">
-                <Link href="#" className="font-bold text-[#1E314A] hover:underline">Kullanım Koşulları</Link>'nı ve <Link href="#" className="font-bold text-[#1E314A] hover:underline">Gizlilik Politikası</Link>'nı kabul ediyorum.
+                <Link href="#" className="font-bold text-[#1E314A] hover:underline">Kullanım Koşulları</Link>&apos;nı ve <Link href="#" className="font-bold text-[#1E314A] hover:underline">Gizlilik Politikası</Link>&apos;nı kabul ediyorum.
               </span>
             </label>
           </div>
@@ -144,7 +144,7 @@ export default function KayitOl() {
         </div>
       </div>
 
-      <p className="text-[11px] text-slate-400 mt-6 font-medium">© 2026 DöngüBorsa • B2B Sürdürülebilir Pazaryeri</p>
+      <p className="text-[11px] text-slate-400 mt-6 font-medium text-center">© 2026 DöngüBorsa • B2B Sürdürülebilir Pazaryeri</p>
     </div>
   );
 }

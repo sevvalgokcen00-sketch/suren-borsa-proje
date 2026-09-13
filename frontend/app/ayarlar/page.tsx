@@ -35,7 +35,6 @@ export default function Ayarlar() {
     smsAlerts: false
   });
 
-  
   useEffect(() => {
     fetch(apiUrl("/api/profile/1"))
       .then((res) => res.json())
@@ -78,9 +77,6 @@ export default function Ayarlar() {
     alert("Ayarlarınız başarıyla güncellendi!");
   };
 
-  
-  
-  
   const handleDownloadInvoice = () => {
     const printWindow = window.open("", "_blank");
     if (!printWindow) {
@@ -213,7 +209,6 @@ export default function Ayarlar() {
     }
   };
 
-  
   const handleSaveNotifications = async () => {
     try {
       const res = await fetch(apiUrl("/api/profile/1/settings"), {
@@ -261,7 +256,7 @@ export default function Ayarlar() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans flex text-slate-800">
+    <div className="min-h-screen bg-[#f8fafc] font-sans flex flex-col lg:flex-row text-slate-800">
       
       {/* SOL MENÜ (SIDEBAR BİLEŞENİ) */}
       <Sidebar />
@@ -270,8 +265,8 @@ export default function Ayarlar() {
       <div className="flex-1 flex flex-col min-w-0">
         
         {/* ÜST HEADER */}
-        <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between gap-4">
-          <div className="flex-1 max-w-md">
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+          <div className="flex-1 w-full sm:max-w-md">
             <input
               type="text"
               placeholder="Ayarlarda ara..."
@@ -279,19 +274,21 @@ export default function Ayarlar() {
             />
           </div>
 
-          <div className="flex items-center gap-4 text-xs">
-            <button className="relative text-base p-2 bg-slate-100/80 rounded-xl hover:bg-slate-200/60 transition">
-              🔔 <span className="absolute -top-1 -right-1 bg-[#1E314A] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">2</span>
-            </button>
-            <button className="text-base p-2 bg-slate-100/80 rounded-xl hover:bg-slate-200/60 transition">
-              💬
-            </button>
+          <div className="flex items-center justify-end gap-3 sm:gap-4 text-xs">
+            <div className="flex items-center gap-2">
+              <button className="relative text-base p-2 bg-slate-100/80 rounded-xl hover:bg-slate-200/60 transition">
+                🔔 <span className="absolute -top-1 -right-1 bg-[#1E314A] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">2</span>
+              </button>
+              <button className="text-base p-2 bg-slate-100/80 rounded-xl hover:bg-slate-200/60 transition">
+                💬
+              </button>
+            </div>
 
             {/* DİNAMİK GİRİŞ / KAYIT VEYA PROFİL */}
-            <div className="border-l border-slate-200 pl-4 flex items-center gap-3">
+            <div className="border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-4 flex items-center gap-3">
               {isLoggedIn ? (
                 <div className="flex items-center gap-2 cursor-pointer">
-                  <div className="w-8 h-8 rounded-full bg-slate-300 overflow-hidden">
+                  <div className="w-8 h-8 rounded-full bg-slate-300 overflow-hidden shrink-0">
                     <img 
                       src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=100&q=80" 
                       alt="Profil" 
@@ -304,16 +301,16 @@ export default function Ayarlar() {
                   </div>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                   <Link 
                     href="/giris-yap" 
-                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-3 sm:px-4 py-2 rounded-xl transition shadow-sm"
                   >
                     Giriş Yap
                   </Link>
                   <Link 
                     href="/kayit-ol" 
-                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-3 sm:px-4 py-2 rounded-xl transition shadow-sm"
                   >
                     Kayıt Ol
                   </Link>
@@ -324,7 +321,7 @@ export default function Ayarlar() {
         </header>
 
         {/* ANA AYARLAR İÇERİĞİ */}
-        <main className="p-6 space-y-6 overflow-y-auto">
+        <main className="p-4 sm:p-6 space-y-6 overflow-y-auto">
           
           {/* Başlık */}
           <div>
@@ -333,7 +330,7 @@ export default function Ayarlar() {
           </div>
 
           {/* SEKME SEÇİMİ (TABS) */}
-          <div className="flex border-b border-slate-200 text-xs font-bold gap-6 overflow-x-auto">
+          <div className="flex border-b border-slate-200 text-xs font-bold gap-4 sm:gap-6 overflow-x-auto pb-1">
             <button
               onClick={() => setActiveTab("firma")}
               className={`pb-3 border-b-2 transition shrink-0 ${
@@ -378,7 +375,7 @@ export default function Ayarlar() {
 
           {/* SEKME 1: FİRMA BİLGİLERİ */}
           {activeTab === "firma" && (
-            <form onSubmit={handleSave} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6 max-w-4xl">
+            <form onSubmit={handleSave} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-6 max-w-4xl">
               <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-3">Kurumsal Profil Detayları</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
@@ -450,14 +447,14 @@ export default function Ayarlar() {
               </div>
 
               <div className="pt-2 flex justify-end">
-                <button onClick={handleSaveCompany} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-2.5 rounded-lg shadow transition-all cursor-pointer">Firma Bilgilerini Kaydet</button>
+                <button type="button" onClick={handleSaveCompany} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-2.5 rounded-lg shadow transition-all cursor-pointer">Firma Bilgilerini Kaydet</button>
               </div>
             </form>
           )}
 
           {/* SEKME 2: PROFİL & GÜVENLİK */}
           {activeTab === "profil" && (
-            <form onSubmit={handleSave} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6 max-w-4xl">
+            <form onSubmit={handleSave} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-6 max-w-4xl">
               <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-3">Kullanıcı Bilgileri & Şifre Değiştir</h3>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
@@ -525,18 +522,18 @@ export default function Ayarlar() {
               </div>
 
               <div className="pt-2 flex justify-end">
-                <button onClick={handleSaveProfileSecurity} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-2.5 rounded-lg shadow transition-all cursor-pointer">Şifre ve Profili Güncelle</button>
+                <button type="button" onClick={handleSaveProfileSecurity} className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-2.5 rounded-lg shadow transition-all cursor-pointer">Şifre ve Profili Güncelle</button>
               </div>
             </form>
           )}
 
           {/* SEKME 3: BİLDİRİM TERCİHLERİ */}
           {activeTab === "bildirim" && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6 max-w-4xl">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-6 max-w-4xl">
               <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-3">Bildirim ve Uyarı Kanalları</h3>
 
               <div className="space-y-4 text-xs">
-                <label className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50 cursor-pointer">
+                <label className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50 cursor-pointer gap-4">
                   <div>
                     <p className="font-bold text-slate-900">Teklif Bildirimleri (E-Posta)</p>
                     <p className="text-slate-400 text-[11px]">İlanlarınıza yeni bir teklif geldiğinde anında e-posta alın.</p>
@@ -544,11 +541,11 @@ export default function Ayarlar() {
                   <input
                     type="checkbox"
                     checked={!!notifications.emailOffers} onChange={(e) => setNotifications({ ...notifications, emailOffers: e.target.checked })}
-                    className="w-4 h-4 accent-[#1E314A] cursor-pointer"
+                    className="w-4 h-4 accent-[#1E314A] cursor-pointer shrink-0"
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50 cursor-pointer">
+                <label className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50 cursor-pointer gap-4">
                   <div>
                     <p className="font-bold text-slate-900">Piyasa & Fiyat Trend Haberleri</p>
                     <p className="text-slate-400 text-[11px]">Haftalık ikincil hammadde ve polimer piyasa fiyat uyarıları.</p>
@@ -556,11 +553,11 @@ export default function Ayarlar() {
                   <input
                     type="checkbox"
                     checked={!!notifications.emailMarket} onChange={(e) => setNotifications({ ...notifications, emailMarket: e.target.checked })}
-                    className="w-4 h-4 accent-[#1E314A] cursor-pointer"
+                    className="w-4 h-4 accent-[#1E314A] cursor-pointer shrink-0"
                   />
                 </label>
 
-                <label className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50 cursor-pointer">
+                <label className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 bg-slate-50 cursor-pointer gap-4">
                   <div>
                     <p className="font-bold text-slate-900">SMS / Mobil Doğrulama Uyarısı</p>
                     <p className="text-slate-400 text-[11px]">Önemli güvenlik ve işlem onaylarında SMS ile bilgilendirme.</p>
@@ -568,7 +565,7 @@ export default function Ayarlar() {
                   <input
                     type="checkbox"
                     checked={!!notifications.smsAlerts} onChange={(e) => setNotifications({ ...notifications, smsAlerts: e.target.checked })}
-                    className="w-4 h-4 accent-[#1E314A] cursor-pointer"
+                    className="w-4 h-4 accent-[#1E314A] cursor-pointer shrink-0"
                   />
                 </label>
               </div>
@@ -581,34 +578,36 @@ export default function Ayarlar() {
 
           {/* SEKME 4: FATURA & ABONELİK */}
           {activeTab === "fatura" && (
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-6 max-w-4xl">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-6 max-w-4xl">
               <h3 className="font-bold text-sm text-slate-900 border-b border-slate-100 pb-3">Kurumsal Abonelik Planı</h3>
 
-              <div className="bg-[#1E314A]/10 border border-[#1E314A]/20 p-5 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+              <div className="bg-[#1E314A]/10 border border-[#1E314A]/20 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                  <span className="bg-[#1E314A] text-white text-[10px] font-bold px-2.5 py-1 rounded-md">AKTİF PLAN</span>
+                  <span className="bg-[#1E314A] text-white text-[10px] font-bold px-2.5 py-1 rounded-md inline-block">AKTİF PLAN</span>
                   <h4 className="font-black text-slate-900 text-base mt-1.5">B2B Kurumsal Kurucu Paket</h4>
                   <p className="text-xs text-slate-500 mt-0.5">Sınırsız İlan Verme • Canlı Piyasa Analizleri • 3.1 MTR Sertifika Desteği</p>
                 </div>
-                <button className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">
+                <button className="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shrink-0">
                   Planı Yükselt
                 </button>
               </div>
 
               <div className="space-y-3">
                 <h4 className="font-bold text-xs text-slate-900">Geçmiş Faturalar</h4>
-                <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
-                  <div className="flex justify-between p-3.5 bg-slate-50 font-bold border-b border-slate-200 text-slate-600">
-                    <span>Fatura Tarihi</span>
-                    <span>Tutar</span>
-                    <span>Durum</span>
-                    <span>İndir</span>
-                  </div>
-                  <div className="flex justify-between p-3.5 border-b border-slate-100">
-                    <span>01 Mayıs 2026</span>
-                    <span className="font-bold text-slate-800">₺ 2.450 + KDV</span>
-                    <span className="text-[#1E314A] font-bold">Ödendi ✓</span>
-                    <button type="button" onClick={handleDownloadInvoice} className="text-blue-600 font-bold hover:underline cursor-pointer">PDF</button>
+                <div className="border border-slate-200 rounded-xl overflow-x-auto text-xs">
+                  <div className="min-w-[500px]">
+                    <div className="flex justify-between p-3.5 bg-slate-50 font-bold border-b border-slate-200 text-slate-600">
+                      <span>Fatura Tarihi</span>
+                      <span>Tutar</span>
+                      <span>Durum</span>
+                      <span>İndir</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3.5 border-b border-slate-100">
+                      <span>01 Mayıs 2026</span>
+                      <span className="font-bold text-slate-800">₺ 2.450 + KDV</span>
+                      <span className="text-[#1E314A] font-bold">Ödendi ✓</span>
+                      <button type="button" onClick={handleDownloadInvoice} className="text-blue-600 font-bold hover:underline cursor-pointer">PDF</button>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -6,26 +6,6 @@ import Sidebar from "../../components/Sidebar";
 import { apiFetch } from "@/lib/api";
 import { CompanyAnalysisData } from "@/lib/types";
 
-/**
- * FİRMA ANALİZİ — GET /api/company-analysis
- *
- * ALAN EŞLEMESİ (API companies[] -> tablo):
- *   id                -> Firma ID
- *   name              -> Firma Adı
- *   mainMaterial      -> Ana Malzeme
- *   totalTransactions -> İşlem Sayısı
- *   avgVolume         -> Ort. İşlem Hacmi (API biçimlendirilmiş ₺ METNİ döndürür)
- *   totalVolumeNum    -> Toplam Ciro (₺, sayı)
- *
- * API'DE KARŞILIĞI OLMAYAN, BU YÜZDEN KALDIRILAN SÜTUN/FİLTRELER
- * (uydurulmadı — backend bu verileri hesaplamıyor):
- *   Şehir              — company-analysis firma şehri döndürmüyor, şehir filtresi kaldırıldı
- *   Toplam Hacim (kg)  — yalnızca ₺ hacmi var, kg bazlı firma toplamı yok
- *   Ort. Birim Fiyat   — firma bazında ₺/kg hesaplanmıyor
- *   Karbon Tasarrufu   — firma bazında CO₂ tasarrufu hesaplanmıyor
- *                        (yalnızca sistem geneli için /api/reports/esg var)
- */
-
 export default function FirmaAnalizi() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -46,7 +26,6 @@ export default function FirmaAnalizi() {
         if (!cancelled) setData(res.data);
       } catch (err) {
         console.error("Firma analizi verisi çekilemedi:", err);
-        // Sahte firma listesine DÜŞÜLMEZ.
         if (!cancelled) {
           setData(null);
           setError("Firma analizi verileri alınamadı. Lütfen birkaç saniye sonra tekrar deneyin.");
@@ -71,11 +50,13 @@ export default function FirmaAnalizi() {
   }, [companies, searchQuery]);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans flex text-slate-800">
+    <div className="min-h-screen bg-[#f8fafc] font-sans flex flex-col lg:flex-row text-slate-800">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between gap-4">
-          <div className="flex-1 max-w-md">
+        
+        {/* HEADER */}
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+          <div className="flex-1 w-full sm:max-w-md">
             <input
               type="text"
               placeholder="Firma adı veya ID ara..."
@@ -85,14 +66,14 @@ export default function FirmaAnalizi() {
             />
           </div>
 
-          <div className="flex items-center gap-4 text-xs">
-            <div className="border-l border-slate-200 pl-4 flex items-center gap-3">
+          <div className="flex items-center justify-end gap-4 text-xs">
+            <div className="border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-4 flex items-center gap-3">
               {isLoggedIn ? (
                 <button onClick={() => setIsLoggedIn(false)} className="font-bold text-slate-500 hover:text-red-500 transition">
                   Çıkış
                 </button>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                   <Link href="/giris-yap" className="font-bold text-slate-600 hover:text-[#1E314A] transition px-3 py-2">
                     Giriş Yap
                   </Link>
@@ -105,7 +86,8 @@ export default function FirmaAnalizi() {
           </div>
         </header>
 
-        <main className="p-6 space-y-6 overflow-y-auto">
+        {/* MAIN CONTENT */}
+        <main className="p-4 sm:p-6 space-y-6 overflow-y-auto">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-xl font-bold text-slate-900">Demir-Çelik Borsa Firma Analizi</h1>
@@ -160,11 +142,11 @@ export default function FirmaAnalizi() {
 
               {/* ÖNE ÇIKAN FİRMA */}
               {data.featuredCompany && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-wrap items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-[#1E314A]/10 text-[#1E314A] flex items-center justify-center text-xl">🏆</div>
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                  <div className="flex items-start sm:items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-[#1E314A]/10 text-[#1E314A] flex items-center justify-center text-xl shrink-0">🏆</div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <h3 className="font-black text-slate-900 text-sm">{data.featuredCompany.name}</h3>
                         {data.featuredCompany.verified && (
                           <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
@@ -175,7 +157,7 @@ export default function FirmaAnalizi() {
                       <p className="text-[11px] text-slate-500 mt-0.5">{data.featuredCompany.description}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6 text-right">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-4 lg:pt-0 border-t lg:border-t-0 border-slate-100 text-left lg:text-right">
                     <div>
                       <span className="text-[10px] text-slate-400 font-bold block">Ana Malzeme</span>
                       <span className="text-sm font-bold text-slate-800">{data.featuredCompany.mainMaterial}</span>
@@ -184,7 +166,7 @@ export default function FirmaAnalizi() {
                       <span className="text-[10px] text-slate-400 font-bold block">Toplam Hacim</span>
                       <span className="text-sm font-black text-[#1E314A]">{data.featuredCompany.totalVolume}</span>
                     </div>
-                    <div>
+                    <div className="col-span-2 sm:col-span-1">
                       <span className="text-[10px] text-slate-400 font-bold block">İşlem</span>
                       <span className="text-sm font-bold text-slate-800">{data.featuredCompany.totalTransactions}</span>
                     </div>
@@ -194,7 +176,7 @@ export default function FirmaAnalizi() {
 
               {/* MALZEME DAĞILIMI */}
               {data.charts?.materialDistribution?.items?.length > 0 && (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-3">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-bold text-sm text-slate-900">Malzeme Dağılımı</h3>
                     <span className="text-[11px] font-bold text-slate-400">
@@ -203,12 +185,12 @@ export default function FirmaAnalizi() {
                   </div>
                   <div className="space-y-2">
                     {data.charts.materialDistribution.items.map((m) => (
-                      <div key={m.name} className="flex items-center gap-3">
-                        <span className="text-[11px] font-bold text-slate-600 w-28 truncate">{m.name}</span>
+                      <div key={m.name} className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3">
+                        <span className="text-[11px] font-bold text-slate-600 sm:w-28 truncate">{m.name}</span>
                         <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
                           <div className="h-full rounded-full" style={{ width: `${m.percentage}%`, backgroundColor: m.color }} />
                         </div>
-                        <span className="text-[11px] font-black text-slate-700 w-12 text-right">%{m.percentage}</span>
+                        <span className="text-[11px] font-black text-slate-700 sm:w-12 text-right">%{m.percentage}</span>
                       </div>
                     ))}
                   </div>
@@ -216,7 +198,7 @@ export default function FirmaAnalizi() {
               )}
 
               {/* FİRMA TABLOSU */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 space-y-4">
                 <h3 className="font-bold text-sm text-slate-900">Firma Bazlı İşlem ve Ciro Performansı</h3>
 
                 {filteredCompanies.length === 0 ? (
@@ -229,42 +211,44 @@ export default function FirmaAnalizi() {
                     </p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="border-b border-slate-100 text-slate-400 font-medium pb-3">
-                          <th className="pb-3">Firma ID</th>
-                          <th className="pb-3">Firma Adı</th>
-                          <th className="pb-3">Ana Malzeme</th>
-                          <th className="pb-3">İşlem Sayısı</th>
-                          <th className="pb-3">Ort. İşlem Hacmi</th>
-                          <th className="pb-3">Toplam Ciro (TL)</th>
-                          <th className="pb-3 text-right">Detay</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 font-medium">
-                        {filteredCompanies.map((item) => (
-                          <tr key={item.id} className="hover:bg-slate-50 transition">
-                            <td className="py-3.5 font-bold text-slate-500">#{item.id}</td>
-                            <td className="py-3.5 font-bold text-slate-900">{item.name}</td>
-                            <td className="py-3.5 text-slate-600">{item.mainMaterial}</td>
-                            <td className="py-3.5 text-slate-800 font-bold">{item.totalTransactions} İlan</td>
-                            <td className="py-3.5 text-slate-700">{item.avgVolume}</td>
-                            <td className="py-3.5 font-black text-[#1E314A]">
-                              ₺ {Number(item.totalVolumeNum).toLocaleString("tr-TR", { maximumFractionDigits: 0 })}
-                            </td>
-                            <td className="py-3.5 text-right">
-                              <button
-                                onClick={() => setSelectedCompanyReport(item)}
-                                className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-3 py-1.5 rounded-xl text-[11px] transition shadow-sm"
-                              >
-                                Raporu Gör
-                              </button>
-                            </td>
+                  <div className="overflow-x-auto -mx-4 sm:mx-0">
+                    <div className="inline-block min-w-full align-middle px-4 sm:px-0">
+                      <table className="w-full text-left border-collapse text-xs min-w-[700px]">
+                        <thead>
+                          <tr className="border-b border-slate-100 text-slate-400 font-medium pb-3">
+                            <th className="pb-3 pr-4">Firma ID</th>
+                            <th className="pb-3 pr-4">Firma Adı</th>
+                            <th className="pb-3 pr-4">Ana Malzeme</th>
+                            <th className="pb-3 pr-4">İşlem Sayısı</th>
+                            <th className="pb-3 pr-4">Ort. İşlem Hacmi</th>
+                            <th className="pb-3 pr-4">Toplam Ciro (TL)</th>
+                            <th className="pb-3 text-right">Detay</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-medium">
+                          {filteredCompanies.map((item) => (
+                            <tr key={item.id} className="hover:bg-slate-50 transition">
+                              <td className="py-3.5 pr-4 font-bold text-slate-500 whitespace-nowrap">#{item.id}</td>
+                              <td className="py-3.5 pr-4 font-bold text-slate-900 whitespace-nowrap">{item.name}</td>
+                              <td className="py-3.5 pr-4 text-slate-600 whitespace-nowrap">{item.mainMaterial}</td>
+                              <td className="py-3.5 pr-4 text-slate-800 font-bold whitespace-nowrap">{item.totalTransactions} İlan</td>
+                              <td className="py-3.5 pr-4 text-slate-700 whitespace-nowrap">{item.avgVolume}</td>
+                              <td className="py-3.5 pr-4 font-black text-[#1E314A] whitespace-nowrap">
+                                ₺ {Number(item.totalVolumeNum).toLocaleString("tr-TR", { maximumFractionDigits: 0 })}
+                              </td>
+                              <td className="py-3.5 text-right whitespace-nowrap">
+                                <button
+                                  onClick={() => setSelectedCompanyReport(item)}
+                                  className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-3 py-1.5 rounded-xl text-[11px] transition shadow-sm"
+                                >
+                                  Raporu Gör
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -275,11 +259,11 @@ export default function FirmaAnalizi() {
 
       {/* FİRMA TİCARİ KARNE MODALI */}
       {selectedCompanyReport && (
-        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh] my-auto">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#1E314A]/10 text-[#1E314A] flex items-center justify-center font-black">
+                <div className="w-10 h-10 rounded-xl bg-[#1E314A]/10 text-[#1E314A] flex items-center justify-center font-black shrink-0">
                   #{selectedCompanyReport.id}
                 </div>
                 <div>
@@ -289,14 +273,14 @@ export default function FirmaAnalizi() {
               </div>
               <button
                 onClick={() => setSelectedCompanyReport(null)}
-                className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold flex items-center justify-center transition"
+                className="w-8 h-8 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold flex items-center justify-center transition shrink-0"
               >
                 ✕
               </button>
             </div>
 
             <div className="p-6 overflow-y-auto space-y-6 text-xs text-slate-600">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                   <span className="text-slate-400 font-bold block mb-1">Toplam İlan</span>
                   <span className="text-lg font-black text-slate-900">{selectedCompanyReport.totalTransactions}</span>

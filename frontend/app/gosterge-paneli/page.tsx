@@ -6,22 +6,6 @@ import Sidebar from "../../components/Sidebar";
 import { apiFetch } from "@/lib/api";
 import { DashboardData } from "@/lib/types";
 
-/**
- * GÖSTERGE PANELİ — GET /api/dashboard
- *
- * KPI EŞLEMESİ (API -> kart):
- *   kpi.recycledAmount.raw (kg)  -> "Toplam İkincil Hammadde" (ton)
- *   kpi.totalVolume.raw (₺)      -> "Toplam İşlem Hacmi" (milyon ₺)
- *   türetilmiş: totalVolume/ağırlık -> "Ortalama Birim Fiyat" (₺/kg)
- *   kpi.activeListings.raw       -> "Aktif İlan"
- *   kpi.incomingOffers.raw       -> "Bekleyen Teklif"
- *   kpi.activeListings.addedToday-> "Bugün Eklenen İlan"
- *
- * API'DE KARŞILIĞI OLMAYANLAR (bu yüzden kart olarak KALDIRILDI, uydurulmadı):
- *   "İlan Dönüşüm Oranı" (%72,4)  — teklif->satış dönüşümü hesaplanmıyor
- *   "Ortalama Satış Süresi" (4,2 gün) — ilan yayın/eşleşme süresi tutulmuyor
- */
-
 export default function GostergePaneli() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userName, setUserName] = useState("");
@@ -40,7 +24,6 @@ export default function GostergePaneli() {
         if (!cancelled) setDashboard(res.data);
       } catch (err) {
         console.error("Gösterge paneli verisi çekilemedi:", err);
-        // Sahte veriye DÜŞÜLMEZ.
         if (!cancelled) {
           setDashboard(null);
           setError("Gösterge paneli verileri alınamadı. Lütfen birkaç saniye sonra tekrar deneyin.");
@@ -76,9 +59,6 @@ export default function GostergePaneli() {
     window.location.reload();
   };
 
-  // Aylık işlem hacmi trendi: API trendChart döndürür ([{month, volume}]).
-  // Sunucuda dönem (7 gün / 3 ay / 1 yıl) parametresi YOK; bu yüzden eski
-  // dönem seçici kaldırıldı ve doğrudan aylık seri çizilir.
   const trendBars = useMemo(() => {
     const series = dashboard?.trendChart ?? [];
     const max = Math.max(...series.map((p) => Number(p.volume) || 0), 0);
@@ -105,29 +85,29 @@ export default function GostergePaneli() {
   }, [dashboard]);
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans flex text-slate-800">
+    <div className="min-h-screen bg-[#f8fafc] font-sans flex flex-col lg:flex-row text-slate-800">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         
-        {/* HEADER (Giriş Yap ve Kayıt Ol Butonları Eklendi) */}
-        <header className="bg-white border-b border-slate-200 px-6 py-3.5 flex items-center justify-between gap-4">
+        {/* HEADER */}
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div>
             <h1 className="font-bold text-slate-900 text-sm">Demir-Çelik Borsa Performans ve Analiz Paneli</h1>
             <p className="text-[11px] text-slate-400">Demir-çelik ikincil hammadde ve üretim fazlası stoklarının yıllık verimlilik göstergeleri</p>
           </div>
 
-          <div className="flex items-center gap-4 text-xs">
-            <div className="border-l border-slate-200 pl-4 flex items-center gap-3">
+          <div className="flex items-center justify-end gap-4 text-xs">
+            <div className="border-t sm:border-t-0 sm:border-l border-slate-200 pt-3 sm:pt-0 sm:pl-4 flex items-center gap-3">
               {isLoggedIn ? (
                 <div className="flex items-center gap-3">
                   <Link
                     href="/gosterge-paneli"
                     className="flex items-center gap-2 group hover:opacity-80 transition"
                   >
-                    <div className="w-8 h-8 rounded-full bg-[#1E314A]/10 text-[#1E314A] flex items-center justify-center font-bold text-xs border border-[#1E314A]/20">
+                    <div className="w-8 h-8 rounded-full bg-[#1E314A]/10 text-[#1E314A] flex items-center justify-center font-bold text-xs border border-[#1E314A]/20 shrink-0">
                       👤
                     </div>
-                    <span className="font-bold text-slate-900">
+                    <span className="font-bold text-slate-900 truncate max-w-[120px] sm:max-w-none">
                       Merhaba,{" "}
                       <span className="text-[#1E314A] group-hover:underline">
                         {userName}
@@ -136,23 +116,23 @@ export default function GostergePaneli() {
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="text-slate-400 hover:text-red-600 font-bold ml-2 transition"
+                    className="text-slate-400 hover:text-red-600 font-bold ml-2 transition shrink-0"
                     title="Çıkış Yap"
                   >
                     🚪 Çıkış
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                   <Link
                     href="/giris-yap"
-                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-3 sm:px-4 py-2 rounded-xl transition shadow-sm"
                   >
                     Giriş Yap
                   </Link>
                   <Link
                     href="/kayit-ol"
-                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                    className="bg-[#1E314A] hover:bg-[#152336] text-white font-bold px-3 sm:px-4 py-2 rounded-xl transition shadow-sm"
                   >
                     Kayıt Ol
                   </Link>
@@ -162,7 +142,7 @@ export default function GostergePaneli() {
           </div>
         </header>
 
-        <main className="p-6 space-y-6 overflow-y-auto">
+        <main className="p-4 sm:p-6 space-y-6 overflow-y-auto">
           
           {/* YÜKLENİYOR */}
           {loading && (
@@ -208,7 +188,7 @@ export default function GostergePaneli() {
             {/* SOL SÜTUN */}
             <div className="flex flex-col gap-6 lg:col-span-7">
               
-              {/* 1. AYLIK İŞLEM HACMİ TRENDİ — GET /api/dashboard -> trendChart */}
+              {/* 1. AYLIK İŞLEM HACMİ TRENDİ */}
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-bold text-sm text-slate-900">Aylık İşlem Hacmi Trendi</h3>
@@ -228,9 +208,9 @@ export default function GostergePaneli() {
                         ></div>
                       ))}
                     </div>
-                    <div className="flex justify-between text-[11px] font-bold text-slate-500 pt-1 px-1">
+                    <div className="flex justify-between text-[11px] font-bold text-slate-500 pt-1 px-1 overflow-x-auto">
                       {trendBars.map((bar, i) => (
-                        <span key={i} className="flex-1 text-center">{bar.month}</span>
+                        <span key={i} className="flex-1 text-center min-w-[30px] truncate">{bar.month}</span>
                       ))}
                     </div>
                   </>
@@ -325,7 +305,7 @@ export default function GostergePaneli() {
               </div>
 
               {/* 2. EN ÇOK YÜKSELENLER VE DÜŞENLER */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-sm space-y-3 relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-50 rounded-full blur-xl -mr-4 -mt-4"></div>
                   <h4 className="text-[10px] font-bold text-emerald-600 border-b border-emerald-50 pb-2">EN ÇOK YÜKSELENLER</h4>
@@ -373,7 +353,7 @@ export default function GostergePaneli() {
                     </div>
                   </div>
 
-                  <div className="border-l border-slate-100 pl-4 flex flex-col justify-center">
+                  <div className="border-t sm:border-t-0 sm:border-l border-slate-100 pt-4 sm:pt-0 sm:pl-4 flex flex-col justify-center">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">24s İşlem Hacmi</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       <span className="text-lg font-black text-slate-900">₺842.500</span>
@@ -382,7 +362,7 @@ export default function GostergePaneli() {
                       ↑ %12,4
                     </span>
                     
-                    <div className="flex items-end gap-[1px] mt-2 h-6 opacity-80">
+                    <div className="flex items-end gap-[1px] mt-2 h-6 opacity-85">
                       {[30, 40, 25, 50, 45, 60, 80, 65, 90, 100].map((h, i) => (
                         <div key={i} className="flex-1 bg-emerald-500 rounded-t-[1px]" style={{ height: `${h}%` }}></div>
                       ))}

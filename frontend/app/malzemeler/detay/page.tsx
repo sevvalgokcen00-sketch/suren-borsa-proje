@@ -14,24 +14,10 @@ import {
   BELIRTILMEMIS,
 } from "@/lib/types";
 
-/**
- * İLAN DETAYI — GET /api/listings/:id
- *
- * ESKİ DAVRANIŞ (hata): görseller ilan id'sine göre SABİT KODLANMIŞ setlerden
- * seçiliyordu (imageSets["1"], ["2"], ...). Yeni oluşturulan bir ilan, başka bir
- * ilana ait fotoğrafları gösteriyordu. Artık görseller kaydın KENDİ imageUrls
- * alanından geliyor; alan boşsa yer tutucu gösterilir.
- *
- * API'DE OLMAYAN, BU YÜZDEN KALDIRILAN BİLGİLER:
- *   Tedarikçi firma adı  — listings kaydında yalnızca user_id var, firma adı yok
- *   "ISO 14064 Doğrulamalı" / "1. Kalite" rozetleri — karşılığı yok
- */
-
 function MalzemeDetayContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // "T-00007" gibi eski biçimleri de tolere et
   const rawId = searchParams.get("id") || "";
   const listingId = parseInt(rawId.replace(/[^0-9]/g, ""), 10) || 0;
 
@@ -70,13 +56,11 @@ function MalzemeDetayContent() {
     };
   }, [listingId]);
 
-  // Görseller KAYDIN KENDİ imageUrls alanından gelir (sabit setlerden değil)
   const images = listing ? listingImages(listing) : [];
   const [activeImage, setActiveImage] = useState<string | null>(null);
 
   useEffect(() => {
     setActiveImage(images.length > 0 ? images[0] : null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listing]);
 
   const weightKg = Number(listing?.weight ?? 0);
@@ -128,21 +112,19 @@ function MalzemeDetayContent() {
 
   const thumbnails = images;
 
-  
-
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans flex text-slate-800">
+    <div className="min-h-screen bg-[#f8fafc] font-sans flex flex-col lg:flex-row text-slate-800">
       <Sidebar />
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* HEADER */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+        <header className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <button type="button" onClick={() => router.back()} className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center font-bold text-slate-600 transition">
+            <button type="button" onClick={() => router.back()} className="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 flex items-center justify-center font-bold text-slate-600 transition shrink-0">
               ←
             </button>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[11px] font-mono font-bold text-[#123873] bg-[#123873]/10 px-2.5 py-0.5 rounded border border-[#123873]/20">
                   #{listing?.id ?? "—"}
                 </span>
@@ -153,19 +135,19 @@ function MalzemeDetayContent() {
                   1. Kalite İkincil Hammadde
                 </span>
               </div>
-              <h1 className="font-bold text-slate-900 text-lg mt-1">
+              <h1 className="font-bold text-slate-900 text-base sm:text-lg mt-1 truncate">
                 {listing?.title ?? "İlan"} — Teknik Spesifikasyon Kartı
               </h1>
             </div>
           </div>
 
-          <button type="button" onClick={() => router.back()} className="text-xs font-bold text-slate-500 hover:text-slate-800 transition">
+          <button type="button" onClick={() => router.back()} className="text-xs font-bold text-slate-500 hover:text-slate-800 transition text-right sm:text-left">
             ← Listeye Dön
           </button>
         </header>
 
         {/* ANA DETAY İÇERİĞİ */}
-        <main className="p-6 overflow-y-auto max-w-5xl mx-auto w-full space-y-6">
+        <main className="p-4 sm:p-6 lg:p-8 overflow-y-auto max-w-5xl mx-auto w-full space-y-6">
 
           {/* YÜKLENİYOR */}
           {loading && (
@@ -190,18 +172,15 @@ function MalzemeDetayContent() {
           {!loading && !error && listing && (
           <>
           {/* 1. GÖRSEL GALERİSİ */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <h3 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-3">
               📸 Malzeme Sahası ve Fotoğraf Galerisi
             </h3>
-            <div className="h-80 sm:h-96 w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
+            <div className="h-64 sm:h-80 md:h-96 w-full rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex items-center justify-center">
               {activeImage ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={activeImage} alt={listing.title} className="w-full h-full object-cover" />
               ) : (
-                // Bu ilana ait görsel yok (uygulama üzerinden oluşturulan
-                // ilanlarda imageUrls boş gelir). Başka bir ilanın fotoğrafını
-                // GÖSTERMİYORUZ; yer tutucu çiziyoruz.
                 <div className="text-center text-slate-300 space-y-2">
                   <div className="text-6xl">🏭</div>
                   <p className="text-sm font-bold text-slate-400">Bu ilana henüz görsel eklenmemiş</p>
@@ -214,7 +193,7 @@ function MalzemeDetayContent() {
                   <button
                     key={idx}
                     onClick={() => setActiveImage(thumb)}
-                    className={`w-20 h-20 rounded-xl overflow-hidden border-2 transition ${
+                    className={`w-16 h-16 sm:w-20 sm:h-20 rounded-xl overflow-hidden border-2 transition shrink-0 ${
                       activeImage === thumb ? "border-[#123873] scale-105" : "border-transparent opacity-70"
                     }`}
                   >
@@ -227,11 +206,11 @@ function MalzemeDetayContent() {
           </div>
 
           {/* 2. DETAYLI TEKNİK VE TİCARİ ÖZELLİKLER TABLOSU */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <h3 className="font-bold text-slate-900 text-sm border-b border-slate-100 pb-3">
               📦 Detaylı Teknik ve Fiziksel Özellikler
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-xs">
               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/60">
                 <span className="text-slate-400 block text-[11px] uppercase font-semibold">Kalite Standardı</span>
                 <strong className="text-slate-900 font-black text-sm mt-0.5 block">S235JR (EN 10025-2)</strong>
@@ -259,8 +238,8 @@ function MalzemeDetayContent() {
             </div>
           </div>
 
-          {/* 3. KURUMSAL KARBON & ÇEVRESEL ETKİ KARNESİ (TEKNOFEST VİZYONU) */}
-          <div className="p-6 rounded-2xl border space-y-3 relative overflow-hidden bg-white shadow-sm" style={{ borderColor: "rgba(18, 56, 115, 0.2)" }}>
+          {/* 3. KURUMSAL KARBON & ÇEVRESEL ETKİ KARNESİ */}
+          <div className="p-4 sm:p-6 rounded-2xl border space-y-3 relative overflow-hidden bg-white shadow-sm" style={{ borderColor: "rgba(18, 56, 115, 0.2)" }}>
             <div className="flex items-center gap-2">
               <span className="text-xl">🌱</span>
               <h4 className="font-black text-sm tracking-wide" style={{ color: "#123873" }}>Kurumsal Karbon & Çevresel Etki Analizi</h4>
@@ -268,15 +247,15 @@ function MalzemeDetayContent() {
             <p className="text-xs text-slate-600 leading-relaxed font-medium">
               Bu ilandaki ikincil hammadde ve metal atıkların yeniden üretime kazandırılmasıyla, birincil cevher üretim süreçlerine kıyasla doğaya salınacak sera gazı emisyonu önlenmektedir.
             </p>
-            <div className="p-4 rounded-xl border flex items-center justify-between" style={{ backgroundColor: "rgba(18, 56, 115, 0.03)", borderColor: "rgba(18, 56, 115, 0.15)" }}>
+            <div className="p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2" style={{ backgroundColor: "rgba(18, 56, 115, 0.03)", borderColor: "rgba(18, 56, 115, 0.15)" }}>
               <span className="text-xs font-bold text-slate-700">Bu İlanın Sağladığı Net Karbon Tasarrufu:</span>
               <span className="text-base font-black" style={{ color: "#123873" }}>{carbonSavedTon} Ton CO₂e</span>
             </div>
           </div>
 
           {/* 4. 3.1 MTR KİMYASAL BİLEŞİM VE MEKANİK ANALİZ TABlosu */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-3 gap-3">
               <div>
                 <h3 className="font-bold text-slate-900 text-sm">
                   🔬 3.1 MTR Laboratuvar & Kimyasal Analiz Raporu
@@ -286,40 +265,42 @@ function MalzemeDetayContent() {
               <button
                 onClick={() => alert("3.1 MTR Sertifikası (PDF) indiriliyor...")}
                 style={{ backgroundColor: "rgba(18, 56, 115, 0.1)", color: "#123873", borderColor: "rgba(18, 56, 115, 0.2)" }}
-                className="text-xs font-bold px-3 py-1.5 rounded-lg border transition hover:opacity-80"
+                className="text-xs font-bold px-3 py-1.5 rounded-lg border transition hover:opacity-85 text-center"
               >
                 📄 Belgeyi İndir (PDF)
               </button>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] border-b border-slate-200">
-                    <th className="p-3">Karbon (%C)</th>
-                    <th className="p-3">Mangan (%Mn)</th>
-                    <th className="p-3">Silisyum (%Si)</th>
-                    <th className="p-3">Fosfor (%P)</th>
-                    <th className="p-3">Kükürt (%S)</th>
-                    <th className="p-3">Çekme Dayanımı (MPa)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-mono font-bold text-slate-800">
-                  <tr>
-                    <td className="p-3">max. 0.17%</td>
-                    <td className="p-3">1.40%</td>
-                    <td className="p-3">0.035%</td>
-                    <td className="p-3">0.025%</td>
-                    <td className="p-3">0.025%</td>
-                    <td className="p-3" style={{ color: "#123873" }}>360 - 510 MPa</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="inline-block min-w-full align-middle px-4 sm:px-0">
+                <table className="w-full text-left border-collapse text-xs min-w-[600px]">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] border-b border-slate-200">
+                      <th className="p-3">Karbon (%C)</th>
+                      <th className="p-3">Mangan (%Mn)</th>
+                      <th className="p-3">Silisyum (%Si)</th>
+                      <th className="p-3">Fosfor (%P)</th>
+                      <th className="p-3">Kükürt (%S)</th>
+                      <th className="p-3">Çekme Dayanımı (MPa)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-mono font-bold text-slate-800">
+                    <tr>
+                      <td className="p-3">max. 0.17%</td>
+                      <td className="p-3">1.40%</td>
+                      <td className="p-3">0.035%</td>
+                      <td className="p-3">0.025%</td>
+                      <td className="p-3">0.025%</td>
+                      <td className="p-3" style={{ color: "#123873" }}>360 - 510 MPa</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
           {/* 5. SATICI FİRMA KÜNYESİ */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
                 İlan Sahibi Tesis
@@ -328,7 +309,7 @@ function MalzemeDetayContent() {
               <p className="text-xs text-slate-500">📍 {listing ? listingCity(listing) : BELIRTILMEMIS} • Kondisyon: {listing ? listingCondition(listing) : BELIRTILMEMIS}</p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <span className="font-bold text-xs px-3 py-1.5 rounded-xl border" style={{ backgroundColor: "rgba(18, 56, 115, 0.05)", color: "#123873", borderColor: "rgba(18, 56, 115, 0.2)" }}>
                 ✓ Doğrulanmış Üretici
               </span>
@@ -338,138 +319,133 @@ function MalzemeDetayContent() {
             </div>
           </div>
 
-        
-        {/* 6. TEKLİF VER AKSİYON KARTI */}
-        <div className="p-6 rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <h4 className="font-bold text-slate-900 text-base">Bu Malzeme İçin Teklif İletin</h4>
-            <p className="text-xs text-slate-500 mt-0.5">Doğrudan üretici firma ile pazarlık başlatın ve tekliflerinizi yönetin.</p>
+          {/* 6. TEKLİF VER AKSİYON KARTI */}
+          <div className="p-4 sm:p-6 rounded-2xl border border-slate-200 bg-white shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h4 className="font-bold text-slate-900 text-base">Bu Malzeme İçin Teklif İletin</h4>
+              <p className="text-xs text-slate-500 mt-0.5">Doğrudan üretici firma ile pazarlık başlatın ve tekliflerinizi yönetin.</p>
+            </div>
+            <button
+              onClick={() => setShowBidModal(true)}
+              className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-sm text-white bg-[#123873] hover:bg-[#0e2c5a] shadow transition active:scale-95 text-center"
+            >
+              Teklif Ver
+            </button>
           </div>
-          <button
-            onClick={() => setShowBidModal(true)}
-            className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-sm text-white bg-[#123873] hover:bg-[#0e2c5a] shadow transition active:scale-95"
-          >
-            Teklif Ver
-          </button>
-        </div>
           </>
           )}
-      </main>
+        </main>
 
-      {/* TEKLİF VERME MODALI */}
-      {showBidModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative border border-slate-100">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-base">Teklif Ver</h3>
-              <button 
-                onClick={() => setShowBidModal(false)}
-                className="text-slate-400 hover:text-slate-600 text-lg font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSendBid} className="mt-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Birim Fiyat (₺/Birim)</label>
-                <input
-                  type="number"
-                  required
-                  value={offerPrice}
-                  onChange={(e) => setOfferPrice(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#123873]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Miktar (Kg / Ton / Adet)</label>
-                <input
-                  type="number"
-                  required
-                  value={offerAmount}
-                  onChange={(e) => setOfferAmount(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#123873]"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Teslimat (Incoterm)</label>
-                  <select
-                    value={incoterm}
-                    onChange={(e) => setIncoterm(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#123873]"
-                  >
-                    <option value="EXW">EXW - Fabrika Teslim</option>
-                    <option value="FCA">FCA - Taşıyıcıya Teslim</option>
-                    <option value="CPT">CPT - Taşıma Ödenmiş</option>
-                    <option value="DAP">DAP - Belirlenen Yerde</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">Ödeme Türü</label>
-                  <select
-                    value={paymentType}
-                    onChange={(e) => setPaymentType(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#123873]"
-                  >
-                    <option value="Peşin">Peşin</option>
-                    <option value="Vade (30 Gün)">Vade (30 Gün)</option>
-                    <option value="Vade (60 Gün)">Vade (60 Gün)</option>
-                    <option value="Akreditif">Akreditif</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Teklif Notu</label>
-                <textarea
-                  rows={2}
-                  value={buyerNote}
-                  onChange={(e) => setBuyerNote(e.target.value)}
-                  placeholder="Opsiyonel açıklama veya şartlarınızı ekleyin..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#123873]"
-                />
-              </div>
-
-              <div className="p-3 bg-slate-50 rounded-xl flex items-center justify-between text-xs">
-                <span className="text-slate-500 font-medium">Hesaplanan Toplam:</span>
-                <span className="font-bold text-slate-900 text-sm">
-                  {((Number(offerPrice) || 0) * (Number(offerAmount) || 0)).toLocaleString("tr-TR")} ₺
-                </span>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
+        {/* TEKLİF VERME MODALI */}
+        {showBidModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 overflow-y-auto">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 relative border border-slate-100 my-auto">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 className="font-bold text-slate-900 text-base">Teklif Ver</h3>
+                <button 
                   onClick={() => setShowBidModal(false)}
-                  className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50"
+                  className="text-slate-400 hover:text-slate-600 text-lg font-bold"
                 >
-                  Vazgeç
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-1/2 py-2.5 rounded-xl bg-[#123873] text-white text-xs font-bold hover:bg-[#0e2c5a] transition disabled:opacity-50"
-                >
-                  {submitting ? "Gönderiliyor..." : "Teklifi İlet"}
+                  ✕
                 </button>
               </div>
-            </form>
+
+              <form onSubmit={handleSendBid} className="mt-4 space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Birim Fiyat (₺/Birim)</label>
+                  <input
+                    type="number"
+                    required
+                    value={offerPrice}
+                    onChange={(e) => setOfferPrice(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#123873]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Miktar (Kg / Ton / Adet)</label>
+                  <input
+                    type="number"
+                    required
+                    value={offerAmount}
+                    onChange={(e) => setOfferAmount(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#123873]"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Teslimat (Incoterm)</label>
+                    <select
+                      value={incoterm}
+                      onChange={(e) => setIncoterm(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#123873]"
+                    >
+                      <option value="EXW">EXW - Fabrika Teslim</option>
+                      <option value="FCA">FCA - Taşıyıcıya Teslim</option>
+                      <option value="CPT">CPT - Taşıma Ödenmiş</option>
+                      <option value="DAP">DAP - Belirlenen Yerde</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Ödeme Türü</label>
+                    <select
+                      value={paymentType}
+                      onChange={(e) => setPaymentType(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#123873]"
+                    >
+                      <option value="Peşin">Peşin</option>
+                      <option value="Vade (30 Gün)">Vade (30 Gün)</option>
+                      <option value="Vade (60 Gün)">Vade (60 Gün)</option>
+                      <option value="Akreditif">Akreditif</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Teklif Notu</label>
+                  <textarea
+                    rows={2}
+                    value={buyerNote}
+                    onChange={(e) => setBuyerNote(e.target.value)}
+                    placeholder="Opsiyonel açıklama veya şartlarınızı ekleyin..."
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#123873]"
+                  />
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl flex items-center justify-between text-xs">
+                  <span className="text-slate-500 font-medium">Hesaplanan Toplam:</span>
+                  <span className="font-bold text-slate-900 text-sm">
+                    {((Number(offerPrice) || 0) * (Number(offerAmount) || 0)).toLocaleString("tr-TR")} ₺
+                  </span>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowBidModal(false)}
+                    className="w-1/2 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50"
+                  >
+                    Vazgeç
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="w-1/2 py-2.5 rounded-xl bg-[#123873] text-white text-xs font-bold hover:bg-[#0e2c5a] transition disabled:opacity-50"
+                  >
+                    {submitting ? "Gönderiliyor..." : "Teklifi İlet"}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       </div>
     </div>
   );
 }
 
-// useSearchParams() bir Suspense sınırı gerektirir; aksi halde bu sayfa
-// prerender sırasında "missing-suspense-with-csr-bailout" hatasıyla build'i
-// düşürür. İçerik tamamen istemci tarafında yüklendiği için sarmalayıcı
-// davranışı değiştirmez, yalnızca ilk boyamada fallback gösterir.
 export default function MalzemeDetayPage() {
   return (
     <Suspense
