@@ -17,6 +17,32 @@ import {
 
 const HEPSI = "Hepsi";
 
+// Malzeme Tipi Seçenekleri
+const MATERIAL_TYPES = [
+  "Temiz Üretim Fazlası",
+  "Kesim/İşleme Artığı",
+  "Standart Dışı Üretim",
+  "Orijinal Ambalajında Fazla Stok",
+];
+
+// Malzeme Durumu (Kondisyon) Seçenekleri
+const CONDITION_OPTIONS = [
+  "DKP (Soğuk Haddelenmiş Sac Artığı)",
+  "Talaş / Kırpıntı",
+  "İmalat Artığı Profil",
+  "Standart Dışı Sac / Levha",
+  "Kalıp Fazlası Parça",
+];
+
+// Depo / Teslimat Konumu (Şehirler) Sabit Listesi
+const CITY_OPTIONS = [
+  "Bursa",
+  "Gaziantep",
+  "İzmir",
+  "Kocaeli",
+  "Sakarya",
+];
+
 export default function Malzemeler() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showIndex, setShowIndex] = useState(true);
@@ -84,21 +110,23 @@ export default function Malzemeler() {
     loadListings({ isInitial: true });
   }, [loadListings]);
 
-  const materialTypeOptions = useMemo(
-    () => Array.from(new Set(optionSource.map(listingMaterial))).sort((a, b) => a.localeCompare(b, "tr")),
-    [optionSource]
-  );
-  const conditionOptions = useMemo(
-    () =>
-      Array.from(new Set(optionSource.map((l) => l.usageStatus).filter((v): v is string => !!v))).sort((a, b) =>
-        a.localeCompare(b, "tr")
-      ),
-    [optionSource]
-  );
-  const cityOptions = useMemo(
-    () => Array.from(new Set(optionSource.map(listingCity))).sort((a, b) => a.localeCompare(b, "tr")),
-    [optionSource]
-  );
+  // Malzeme tipleri sabit liste
+  const materialTypeOptions = useMemo(() => {
+    return MATERIAL_TYPES;
+  }, []);
+
+  // Malzeme durumu (kondisyon) sabit liste
+  const conditionOptions = useMemo(() => {
+    return CONDITION_OPTIONS;
+  }, []);
+
+  // Şehirler sabit liste (istersen backend'den gelenlerle harmanlayabiliriz, şu an sabit liste kullanılıyor)
+  const cityOptions = useMemo(() => {
+    const backendCities = optionSource.map(listingCity).filter(Boolean);
+    return Array.from(new Set([...backendCities, ...CITY_OPTIONS])).sort((a, b) =>
+      a.localeCompare(b, "tr")
+    );
+  }, [optionSource]);
 
   const visibleListings = useMemo(
     () =>
